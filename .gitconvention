@@ -1,0 +1,25 @@
+# subject
+## <type>: <subject>
+
+
+# body
+
+
+# footer
+## <type>: #[issue id]
+
+
+##[subject <type>]################################
+# feat : 기능 추가
+# fix : 버그 수정
+# docs : 문서 변경
+# refactor : 코드 리펙토링
+# chore : 빌드 프로세스, 도구 설정 변경 등 기타 작업
+##################################################
+
+##[footer issue <type>]###########################
+# Fixes: issue 진행중
+# Resolves: issue 해결 완료
+# Ref: 참고할 issue
+# Related To: 해당 커밋 관련 issue (해결 필요 issue)
+##################################################
