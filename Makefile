@@ -8,7 +8,11 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98
 SRC_DIR = src
 OBJ_DIR = obj
 
-SRCS = $(addprefix src/, main.cpp)
+SRCS = $(addprefix src/, main.cpp \
+												ConfigurationParser.cpp \
+												FileReader.cpp \
+												Configuration.cpp \
+												Utils.cpp)
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
 all: $(OBJ_DIR) $(NAME)
