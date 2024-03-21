@@ -4,18 +4,17 @@
 
 /** ServerConfiguration::constructor **/
 
-ServerConfiguration::ServerConfiguration() {
-  host_ = "127.0.0.1";
-  port_ = 0;
-  (void)server_names_;
-  (void)location_;
-  (void)error_page_;
-  client_max_body_size_ = "1M";
-  (void)root_;
-  auto_index_ = false;
-  (void)index_if_dir_;
-  index_ = "index.html";
-}
+ServerConfiguration::ServerConfiguration()
+    : host_("127.0.0.1"),
+      port_(0),
+      server_names_(),
+      location_(),
+      error_page_(),
+      client_max_body_size_("1M"),
+      root_(),
+      auto_index_(),
+      index_("index.html"),
+      index_if_dir_() {}
 
 ServerConfiguration::ServerConfiguration(
     const std::string& host, const int& port,
@@ -81,8 +80,7 @@ const std::string& ServerConfiguration::host() const { return this->host_; }
 
 const int& ServerConfiguration::port() const { return this->port_; }
 
-const std::set<const std::string>& ServerConfiguration::server_names()
-    const {
+const std::set<const std::string>& ServerConfiguration::server_names() const {
   return this->server_names_;
 }
 
@@ -92,8 +90,8 @@ ServerConfiguration::location() const {
   return this->location_;
 }
 
-const std::map<const int, const std::string>&
-ServerConfiguration::error_page() const {
+const std::map<const int, const std::string>& ServerConfiguration::error_page()
+    const {
   return this->error_page_;
 }
 
@@ -117,7 +115,16 @@ const std::string& ServerConfiguration::index() const { return this->index_; }
 
 /** ServerConfiguration::LocationConfiguration::constructor **/
 
-ServerConfiguration::LocationConfiguration::LocationConfiguration() {}
+ServerConfiguration::LocationConfiguration::LocationConfiguration()
+    : error_page_(),
+      client_max_body_size_("1M"),
+      root_(),
+      auto_index_(false),
+      index_("index.html"),
+      index_if_dir_(),
+      allowed_method_(),
+      return_uri_(),
+      upload_store_("upload_store/") {}
 
 ServerConfiguration::LocationConfiguration::LocationConfiguration(
     const std::map<const int, const std::string>& error_page,
@@ -142,17 +149,7 @@ ServerConfiguration::LocationConfiguration::LocationConfiguration(
 }
 
 /** ServerConfiguration::LocationConfiguration::destructor **/
-ServerConfiguration::LocationConfiguration::~LocationConfiguration() {
-  (void)error_page_;
-  client_max_body_size_ = "1M";
-  (void)root_;
-  auto_index_ = false;
-  index_ = "index.html";
-  (void)index_if_dir_;
-  (void)allowed_method_;
-  (void)return_uri_;
-  upload_store_ = "upload_store/";
-}
+ServerConfiguration::LocationConfiguration::~LocationConfiguration() {}
 
 /** ServerConfiguration::LocationConfiguration::operator overriding **/
 ServerConfiguration::LocationConfiguration&
@@ -201,8 +198,7 @@ const bool& ServerConfiguration::LocationConfiguration::auto_index() const {
   return this->auto_index_;
 }
 
-const std::string& ServerConfiguration::LocationConfiguration::index()
-    const {
+const std::string& ServerConfiguration::LocationConfiguration::index() const {
   return this->index_;
 }
 
@@ -258,8 +254,7 @@ std::ostream& operator<<(std::ostream& out,
 
   out << "	root: " << serverConfiguration.root() << std::endl;
 
-  out << "	auto_index: " << serverConfiguration.auto_index()
-      << std::endl;
+  out << "	auto_index: " << serverConfiguration.auto_index() << std::endl;
 
   out << "	index: " << serverConfiguration.index_if_dir() << std::endl;
 
