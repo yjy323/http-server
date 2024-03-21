@@ -5,7 +5,7 @@
 #include "core.hpp"
 #include "file_reader.hpp"
 
-Return parseConfig(const char* fileName, Configuration& configuration);
+int parseConfig(const char* fileName, Configuration& configuration);
 
 int main(const int argc, const char* argv[]) {
   Configuration configuration;
@@ -32,7 +32,7 @@ int main(const int argc, const char* argv[]) {
   return OK;
 }
 
-Return parseConfig(const char* fileName, Configuration& configuration) {
+int parseConfig(const char* fileName, Configuration& configuration) {
   std::string contents;
 
   if (FileReader::readFile(fileName, contents) == ERROR) {

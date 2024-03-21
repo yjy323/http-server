@@ -16,7 +16,7 @@ class FileReader {
  public:
   virtual ~FileReader();
 
-  static Return readFile(const std::string& filePath, std::string& contents);
+  static int readFile(const std::string& filePath, std::string& contents);
 };
 
 #endif

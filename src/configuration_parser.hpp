@@ -23,23 +23,24 @@ class ConfigurationParser {
 
   ConfigurationParser& operator=(const ConfigurationParser& ref);
 
-  static Return eraseComment(std::string& contents);
-  static Return tokenize(const std::string& str, Tokens& tokens);
-  static Return parse(const Tokens& tokens, Configuration& configuration);
+  static int eraseComment(std::string& contents);
+  static int tokenize(const std::string& str, Tokens& tokens);
+  static int parse(const Tokens& tokens, Configuration& configuration);
 
-  static Return parseServer(const Tokens& tokens,
-                            ServerConfiguration& ServerConfiguration);
-  static Return parseLocation(
+  static int parseServer(const Tokens& tokens,
+                         ServerConfiguration& ServerConfiguration);
+  static int parseLocation(
       const Tokens& tokens, const ServerConfiguration& serverConfiguration,
       ServerConfiguration::LocationConfiguration& locationConfiguration);
 
-  static Return parseServerLine(
-      const Token& directive, const Tokens& valueTokens, std::string& host,
-      int& port, std::set<const std::string>& server_names,
-      std::map<const int, const std::string>& error_page,
-      std::string& client_max_body_size, std::string& root, bool& auto_index,
-      std::string& index, std::string& index_if_dir);
-  static Return parseLocationLine(
+  static int parseServerLine(const Token& directive, const Tokens& valueTokens,
+                             std::string& host, int& port,
+                             std::set<const std::string>& server_names,
+                             std::map<const int, const std::string>& error_page,
+                             std::string& client_max_body_size,
+                             std::string& root, bool& auto_index,
+                             std::string& index, std::string& index_if_dir);
+  static int parseLocationLine(
       const Token& directive, const Tokens& valueTokens,
       std::map<const int, const std::string>& error_page,
       std::string& client_max_body_size, std::string& root, bool& auto_index,
@@ -47,26 +48,25 @@ class ConfigurationParser {
       std::set<const std::string>& allowed_method, std::string& return_uri,
       std::string& upload_store);
 
-  static Return parseHost(std::string& host, const Tokens& valueTokens);
-  static Return parsePort(int& port, const Tokens& valueTokens);
-  static Return parseServer_names(std::set<const std::string>& server_names,
-                                  const Tokens& valueTokens);
-  static Return parseError_page(
-      std::map<const int, const std::string>& error_page,
-      const Tokens& valueTokens);
-  static Return parseClient_max_body_size(std::string& client_max_body_size,
-                                          const Tokens& valueTokens);
-  static Return parseRoot(std::string& root, const Tokens& valueTokens);
-  static Return parseAuto_index(bool& auto_index, const Tokens& valueTokens);
-  static Return parseIndex(std::string& index, const Tokens& valueTokens);
-  static Return parseIndex_if_dir(std::string& index_if_dir,
-                                  const Tokens& valueTokens);
-  static Return parseAllowed_method(std::set<const std::string>& allowed_method,
-                                    const Tokens& valueTokens);
-  static Return parseReturn_uri(std::string& return_uri,
-                                const Tokens& valueTokens);
-  static Return parseUpload_store(std::string& upload_store,
-                                  const Tokens& valueTokens);
+  static int parseHost(std::string& host, const Tokens& valueTokens);
+  static int parsePort(int& port, const Tokens& valueTokens);
+  static int parseServer_names(std::set<const std::string>& server_names,
+                               const Tokens& valueTokens);
+  static int parseError_page(std::map<const int, const std::string>& error_page,
+                             const Tokens& valueTokens);
+  static int parseClient_max_body_size(std::string& client_max_body_size,
+                                       const Tokens& valueTokens);
+  static int parseRoot(std::string& root, const Tokens& valueTokens);
+  static int parseAuto_index(bool& auto_index, const Tokens& valueTokens);
+  static int parseIndex(std::string& index, const Tokens& valueTokens);
+  static int parseIndex_if_dir(std::string& index_if_dir,
+                               const Tokens& valueTokens);
+  static int parseAllowed_method(std::set<const std::string>& allowed_method,
+                                 const Tokens& valueTokens);
+  static int parseReturn_uri(std::string& return_uri,
+                             const Tokens& valueTokens);
+  static int parseUpload_store(std::string& upload_store,
+                               const Tokens& valueTokens);
 
   static bool isHost(const std::string& port);
   static bool isPort(const std::string& port);
@@ -76,8 +76,7 @@ class ConfigurationParser {
  public:
   virtual ~ConfigurationParser();
 
-  static Return parse(const std::string& contents,
-                      Configuration& configuration);
+  static int parse(const std::string& contents, Configuration& configuration);
 };
 
 #endif
