@@ -4,8 +4,8 @@
 #include <set>
 #include <string>
 
-#include "Configuration.hpp"
-#include "Core.hpp"
+#include "configuration.hpp"
+#include "core.hpp"
 
 class ConfigurationParser {
  private:

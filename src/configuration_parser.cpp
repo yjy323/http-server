@@ -1,12 +1,12 @@
-#include "ConfigurationParser.hpp"
+#include "configuration_parser.hpp"
 
 #include <fcntl.h>
 
 #include <fstream>
 #include <sstream>
 
-#include "FileReader.hpp"
-#include "Utils.hpp"
+#include "file_reader.hpp"
+#include "utils.hpp"
 
 const std::string ConfigurationParser::COMMENT_TOKEN = "#";
 const std::string ConfigurationParser::END_TOKEN = ";";
@@ -246,13 +246,12 @@ Return ConfigurationParser::parseLocation(
     const Tokens& tokens, const ServerConfiguration& serverConfiguration,
     ServerConfiguration::LocationConfiguration& locationConfiguartion) {
   std::map<const int, const std::string> error_page =
-      serverConfiguration.getError_page();
-  std::string client_max_body_size =
-      serverConfiguration.getClient_max_body_size();
-  std::string root = serverConfiguration.getRoot();
-  bool auto_index = serverConfiguration.getAuto_index();
-  std::string index = serverConfiguration.getIndex();
-  std::string index_if_dir = serverConfiguration.getIndex_if_dir();
+      serverConfiguration.error_page();
+  std::string client_max_body_size = serverConfiguration.client_max_body_size();
+  std::string root = serverConfiguration.root();
+  bool auto_index = serverConfiguration.auto_index();
+  std::string index = serverConfiguration.index();
+  std::string index_if_dir = serverConfiguration.index_if_dir();
   std::set<const std::string> allowed_method;
   std::string return_uri;
   std::string upload_store;

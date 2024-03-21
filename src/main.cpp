@@ -1,9 +1,9 @@
 #include <iostream>
 
-#include "Configuration.hpp"
-#include "ConfigurationParser.hpp"
-#include "Core.hpp"
-#include "FileReader.hpp"
+#include "configuration.hpp"
+#include "configuration_parser.hpp"
+#include "core.hpp"
+#include "file_reader.hpp"
 
 Return parseConfig(const char* fileName, Configuration& configuration);
 

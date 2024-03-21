@@ -4,7 +4,7 @@
 #include <fstream>
 #include <string>
 
-#include "Core.hpp"
+#include "core.hpp"
 
 class FileReader {
  private:
