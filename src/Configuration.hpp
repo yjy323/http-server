@@ -47,7 +47,7 @@ class ServerConfiguration {
   /* destructor */
   virtual ~ServerConfiguration();
 
-  /* overator overriding */
+  /* operator overriding */
   ServerConfiguration& operator=(const ServerConfiguration& ref);
 
   /* getter */
@@ -93,7 +93,7 @@ class ServerConfiguration {
     /* destructor */
     virtual ~LocationConfiguration();
 
-    /* overator overriding */
+    /* operator overriding */
     LocationConfiguration& operator=(const LocationConfiguration& ref);
 
     /* getter */

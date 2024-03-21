@@ -43,7 +43,7 @@ ServerConfiguration::ServerConfiguration(const ServerConfiguration& ref) {
 /** ServerConfiguration::destructor **/
 ServerConfiguration::~ServerConfiguration() {}
 
-/** ServerConfiguration::overator overriding **/
+/** ServerConfiguration::operator overriding **/
 
 ServerConfiguration& ServerConfiguration::operator=(
     const ServerConfiguration& ref) {
@@ -154,7 +154,7 @@ ServerConfiguration::LocationConfiguration::~LocationConfiguration() {
   upload_store = "upload_store/";
 }
 
-/** ServerConfiguration::LocationConfiguration::overator overriding **/
+/** ServerConfiguration::LocationConfiguration::operator overriding **/
 ServerConfiguration::LocationConfiguration&
 ServerConfiguration::LocationConfiguration::operator=(
     const LocationConfiguration& ref) {
