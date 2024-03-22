@@ -36,6 +36,8 @@ class Url {
         URI Component의 구성요소
   */
   std::string scheme_;
+  std::string user_;
+  std::string password_;
   std::string host_;
   int port_;  // todo - socket API의 port 자료구조로 변경
   std::list<PathComponent> path_component_;  // todo - 자료구조 결정 필요
@@ -44,14 +46,16 @@ class Url {
   std::string target_uri_;
   RequestTargetFrom request_target_form_;
   // todo - 서버 정보를 저장할 변수 필요
+  int ParseScheme(std::string& scheme);
+  int ParseAuthority(std::string& authority);
+  int ParsePathComponent(std::string& path_component);
 
+ public:
   Url();
   Url(const Url& obj);
   ~Url();
   Url& operator=(const Url& obj);
-
- public:
-  void ParseUriComponent(std::string& request_uri);
+  int ParseUriComponent(std::string& request_uri);
   // todo - Impl method, URI 컴포넌트의 값을 채운다.
   void ReconstructTargetUri();
   /*
