@@ -1,5 +1,17 @@
 #include "utils.hpp"
 
+const std::vector<const std::string> Split(const std::string& str,
+                                           const char delimiter) {
+  std::istringstream iss(str);
+  std::string buffer;
+  std::vector<const std::string> buffer_container;
+
+  while (getline(iss, buffer, delimiter)) {
+    buffer_container.push_back(buffer);
+  }
+  return buffer_container;
+}
+
 const std::vector<const std::string> split(const std::string& str,
                                            const std::string& sep) {
   std::vector<const std::string> res;

@@ -127,16 +127,6 @@ int Url::ParseAuthority(std::string& authority) {
 
 // int Url::ParsePathComponent(std::string& path_component) {}
 
-std::vector<std::string> Split(std::string& str, char delimiter) {
-  std::istringstream iss(str);
-  std::string buffer;
-  std::vector<std::string> buffer_container;
-
-  while (getline(iss, buffer, delimiter)) {
-    buffer_container.push_back(buffer);
-  }
-  return buffer_container;
-}
 int Url::ParseUriComponent(std::string& request_uri) {
   // https://www.example.org/pub/WWW/TheProject.html
   // scheme "://" authority *(/path;key=value)[? key = value]  #fragment
