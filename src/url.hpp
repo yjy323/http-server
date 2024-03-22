@@ -1,9 +1,15 @@
 #ifndef URL_HPP
 #define URL_HPP
 
+#include <cctype>
 #include <iostream>
 #include <list>
 #include <map>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "abnf.hpp"
 
 /*
         1. request uri 파싱
@@ -46,9 +52,6 @@ class Url {
   std::string target_uri_;
   RequestTargetFrom request_target_form_;
   // todo - 서버 정보를 저장할 변수 필요
-  int ParseScheme(std::string& scheme);
-  int ParseAuthority(std::string& authority);
-  int ParsePathComponent(std::string& path_component);
 
  public:
   Url();
@@ -63,6 +66,13 @@ class Url {
         파싱된 컴포넌트 정보를 이용해 target URI를 생성한다.
         response에 쓰이지는 않을 것 같음
   */
+
+  // Reviewer는 참고 바랍니다.
+  // 테스트를 위해 단위 메서드를 public으로 열어둔다.
+  // todo: main 브랜치에 merge 시 private으로 돌려야한다.
+  int ParseScheme(std::string& scheme);
+  int ParseAuthority(std::string& authority);
+  int ParsePathComponent(std::string& path_component);
 };
 
 #endif

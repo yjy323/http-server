@@ -1,10 +1,5 @@
 #include "url.hpp"
 
-#include <cctype>
-#include <sstream>
-#include <string>
-#include <vector>
-
 // 임시
 #define OK 0
 #define ERROR 1
@@ -23,46 +18,6 @@ Url& Url::operator=(const Url& obj) {
 void ToCaseInsensitve(std::string& str) {
   for (size_t i = 0; i < str.length(); ++i) {
     str[i] = std::tolower(str[i]);
-  }
-}
-
-bool IsUnreserved(char c) {
-  // unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
-  if (std::isalnum(c)) {
-    return true;
-  } else {
-    switch (c) {
-      case '-':
-      case '.':
-      case '_':
-      case '~':
-        return true;
-      default:
-        return false;
-    }
-  }
-}
-
-bool IsSubDlims(char c) {
-  /*
-        sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / ","
-                / ";" / "="
-  */
-  switch (c) {
-    case '!':
-    case '$':
-    case '&':
-    case '\'':
-    case '(':
-    case ')':
-    case '*':
-    case '+':
-    case ',':
-    case ';':
-    case '=':
-      return true;
-    default:
-      return false;
   }
 }
 
@@ -152,7 +107,7 @@ int Url::ParseAuthority(std::string& authority) {
       // reg-name = *( unreserved / pct-encoded / sub-delims )
       for (size_t i = 0; i < authority_length; i++) {
         char c = authority[i];
-        if (IsUnreserved(c) || IsSubDlims(c)) {
+        if (Abnf::IsUnreserved(c) || Abnf::IsSubDlims(c)) {
           continue;
         } else if (c == '%') {
           // pct-encoded = "%" HEXDIG HEXDIG
