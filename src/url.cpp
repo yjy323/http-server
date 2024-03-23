@@ -15,12 +15,6 @@ Url& Url::operator=(const Url& obj) {
   return *this;
 }
 
-void ToCaseInsensitve(std::string& str) {
-  for (size_t i = 0; i < str.length(); ++i) {
-    str[i] = std::tolower(str[i]);
-  }
-}
-
 int Url::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
 
@@ -105,17 +99,21 @@ int Url::ParseAuthority(std::string& authority) {
 
     if (is_ip_v4_address == false) {
       // reg-name = *( unreserved / pct-encoded / sub-delims )
-      for (size_t i = 0; i < authority_length; i++) {
+      for (size_t i = 0; i < authority_length; ++i) {
         char c = authority[i];
-        if (Abnf::IsUnreserved(c) || Abnf::IsSubDlims(c)) {
-          continue;
-        } else if (c == '%') {
-          // pct-encoded = "%" HEXDIG HEXDIG
-          for (int j = 1; j < 3; j++) {
-            if (i + j == authority_length || !std::isxdigit(authority[i + j])) {
+
+        switch (c) {
+          case '%':
+            c = Abnf::DecodePctEncoded(authority, i);
+            if (c == -1) {
               return ERROR;
             }
-          }
+            break;
+          default:
+            if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
+              return ERROR;
+            }
+            break;
         }
       }
     }
@@ -125,7 +123,71 @@ int Url::ParseAuthority(std::string& authority) {
   }
 }
 
-// int Url::ParsePathComponent(std::string& path_component) {}
+int Url::ParsePathSegment(std::string& path_segment) {
+  /*
+        path-abempty = *( "/" segment )
+
+        segment = *pchar
+        pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
+  */
+  PathSegment path_segment_obj;
+  std::string key;
+  std::string value;
+
+  std::stringstream ss;
+  bool is_before_param = true;
+
+  size_t path_segment_length = path_segment.length();
+
+  for (size_t i = 0; i < path_segment_length; ++i) {
+    char c = path_segment[i];
+
+    switch (c) {
+      case '%':
+        c = Abnf::DecodePctEncoded(path_segment, i);
+        if (c == -1) {
+          return ERROR;
+        }
+        break;
+      case ';':
+        if (is_before_param) {
+          path_segment_obj.path = ss.str();
+        } else {
+          value = ss.str();
+        }
+        is_before_param = false;
+
+        if (key != "") {
+          path_segment_obj.parameter.insert(std::make_pair(key, value));
+        }
+
+        key = "";
+        value = "";
+        ss.str(std::string());
+        break;
+      case '=':
+        key = ss.str();
+        ss.str(std::string());
+        break;
+      default:
+        if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
+          return ERROR;
+        } else {
+          ss << c;
+        }
+        break;
+    }
+  }
+  if (is_before_param) {
+    path_segment_obj.path = ss.str();
+  } else if (key != "") {
+    path_segment_obj.parameter.insert(std::make_pair(key, ss.str()));
+  } else {
+    path_segment_obj.parameter.insert(std::make_pair(ss.str(), ""));
+  }
+
+  return OK;
+}
 
 int Url::ParseUriComponent(std::string& request_uri) {
   // https://www.example.org/pub/WWW/TheProject.html
@@ -140,5 +202,6 @@ int Url::ParseUriComponent(std::string& request_uri) {
         5. validation
             - scheme, host, port , path, parameter ... 각자
   */
-  return ParseAuthority(request_uri);
+  (void)request_uri;
+  return OK;
 }

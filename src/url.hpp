@@ -5,10 +5,12 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include "abnf.hpp"
+#include "utils.hpp"
 
 /*
         1. request uri 파싱
@@ -32,9 +34,9 @@ class Url {
   enum ResourceType { kFile, kDirectory, kGateway };
   ResourceType resource_type_;
 
-  struct PathComponent {
+  struct PathSegment {
     std::string path;
-    std::map<std::string, std::string> parameter;
+    std::map<const std::string, const std::string> parameter;
   };
 
   /*
@@ -45,8 +47,8 @@ class Url {
   std::string password_;
   std::string host_;
   int port_;  // todo - socket API의 port 자료구조로 변경
-  std::list<PathComponent> path_component_;  // todo - 자료구조 결정 필요
-  std::map<std::string, std::string> query_string_;
+  std::list<PathSegment> path_segments_;  // todo - 자료구조 결정 필요
+  std::map<const std::string, const std::string> query_string_;
 
   std::string target_uri_;
   RequestTargetFrom request_target_form_;
@@ -59,7 +61,6 @@ class Url {
   Url& operator=(const Url& obj);
   int ParseUriComponent(std::string& request_uri);
   // todo - Impl method, URI 컴포넌트의 값을 채운다.
-  void ReconstructTargetUri();
   /*
         todo - Impl method
         파싱된 컴포넌트 정보를 이용해 target URI를 생성한다.
@@ -71,7 +72,7 @@ class Url {
   // todo: main 브랜치에 merge 시 private으로 돌려야한다.
   int ParseScheme(std::string& scheme);
   int ParseAuthority(std::string& authority);
-  int ParsePathComponent(std::string& path_component);
+  int ParsePathSegment(std::string& path_component);
 };
 
 #endif
