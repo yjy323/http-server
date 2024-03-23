@@ -1,5 +1,11 @@
 #include "utils.hpp"
 
+void ToCaseInsensitve(std::string& str) {
+  for (size_t i = 0; i < str.length(); ++i) {
+    str[i] = std::tolower(str[i]);
+  }
+}
+
 const std::vector<const std::string> Split(const std::string& str,
                                            const char delimiter) {
   std::istringstream iss(str);
