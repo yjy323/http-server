@@ -5,6 +5,12 @@
 #define ERROR 1
 
 /*
+        URL 클래스의 비멤버 함수
+*/
+static void InsertKeyValuePair(std::map<const std::string, std::string>& map,
+                               const std::string& key, std::string value);
+
+/*
  Todo: 생성자 구체화, 초기화에 서버 정보 필요, ABNF 룰 함수 분리
 */
 Url::Url() {}
@@ -85,7 +91,7 @@ int Url::ParseAuthority(std::string& authority) {
 
     bool is_ip_v4_address = true;
     size_t pre_delimiter_pos = 0;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 4; ++i) {
       delimiter_pos = authority.find(".", pre_delimiter_pos);
       sub_component = authority.substr(pre_delimiter_pos, delimiter_pos);
       pre_delimiter_pos = delimiter_pos;
@@ -123,6 +129,15 @@ int Url::ParseAuthority(std::string& authority) {
   }
 }
 
+void InsertKeyValuePair(std::map<const std::string, std::string>& map,
+                        const std::string& key, std::string value) {
+  if (value != "") {
+    map[key] = value;
+  } else {
+    map.insert(std::make_pair(key, value));
+  }
+}
+
 int Url::ParsePathSegment(std::string& path_segment) {
   /*
         path-abempty = *( "/" segment )
@@ -132,7 +147,6 @@ int Url::ParsePathSegment(std::string& path_segment) {
   */
   PathSegment path_segment_obj;
   std::string key;
-  std::string value;
 
   std::stringstream ss;
   bool is_before_param = true;
@@ -152,22 +166,19 @@ int Url::ParsePathSegment(std::string& path_segment) {
       case ';':
         if (is_before_param) {
           path_segment_obj.path = ss.str();
-        } else {
-          value = ss.str();
+        } else if (key != "") {
+          InsertKeyValuePair(path_segment_obj.parameter, key, ss.str());
         }
         is_before_param = false;
-
-        if (key != "") {
-          path_segment_obj.parameter.insert(std::make_pair(key, value));
-        }
-
         key = "";
-        value = "";
         ss.str(std::string());
         break;
       case '=':
         key = ss.str();
         ss.str(std::string());
+        break;
+      case ':':
+      case '@':
         break;
       default:
         if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
@@ -181,11 +192,62 @@ int Url::ParsePathSegment(std::string& path_segment) {
   if (is_before_param) {
     path_segment_obj.path = ss.str();
   } else if (key != "") {
-    path_segment_obj.parameter.insert(std::make_pair(key, ss.str()));
-  } else {
-    path_segment_obj.parameter.insert(std::make_pair(ss.str(), ""));
+    InsertKeyValuePair(path_segment_obj.parameter, key, ss.str());
+  }
+  this->path_segments_.push_back(path_segment_obj);
+
+  return OK;
+}
+
+int Url::ParseQuery(std::string& query) {
+  // query = *( pchar / "/" / "?" )
+  // pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
+
+  std::string key;
+
+  std::stringstream ss;
+
+  size_t query_length = query.length();
+
+  for (size_t i = 0; i < query_length; ++i) {
+    char c = query[i];
+
+    switch (c) {
+      case '%':
+        c = Abnf::DecodePctEncoded(query, i);
+        if (c == -1) {
+          return ERROR;
+        }
+        break;
+      case '&':
+        if (key != "") {
+          InsertKeyValuePair(query_, key, ss.str());
+        }
+        key = "";
+        ss.str(std::string());
+        break;
+      case '=':
+        key = ss.str();
+        ss.str(std::string());
+        break;
+      case ':':
+      case '@':
+      case '/':
+      case '?':
+        break;
+      default:
+        if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
+          return ERROR;
+        } else {
+          ss << c;
+        }
+        break;
+    }
   }
 
+  if (key != "") {
+    InsertKeyValuePair(query_, key, ss.str());
+  }
   return OK;
 }
 
