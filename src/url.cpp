@@ -45,6 +45,21 @@ int ParseSubComponent(Url& url, int (Url::*Parser)(std::string& param),
 /*
         URL 클래스 멤버 함수
 */
+Url::Url() {}
+Url::~Url() {}
+
+Url::Url(const Url& obj) { *this = obj; }
+Url& Url::operator=(const Url& obj) {
+  if (this != &obj) {
+    this->scheme_ = obj.scheme_;
+    this->host_ = obj.host_;
+    this->port_ = obj.port_;
+    this->path_segments_ = obj.path_segments_;
+    this->query_ = obj.query_;
+  }
+  return *this;
+}
+
 int Url::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
 
