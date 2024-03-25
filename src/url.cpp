@@ -5,22 +5,46 @@
 #define ERROR 1
 
 /*
-        URL 클래스의 비멤버 함수
+        url.cpp에 사용되는 비멤버 함수
 */
 static void InsertKeyValuePair(std::map<const std::string, std::string>& map,
                                const std::string& key, std::string value);
 
-/*
- Todo: 생성자 구체화, 초기화에 서버 정보 필요, ABNF 룰 함수 분리
-*/
-Url::Url() {}
-Url::Url(const Url& obj) { (void)obj; }
-Url::~Url() {}
-Url& Url::operator=(const Url& obj) {
-  (void)obj;
-  return *this;
+static int ParseSubComponent(Url& url, int (Url::*Parser)(std::string& param),
+                             std::string& uri_component, std::string delimiter);
+
+void InsertKeyValuePair(std::map<const std::string, std::string>& map,
+                        const std::string& key, std::string value) {
+  if (value != "") {
+    map[key] = value;
+  } else {
+    map.insert(std::make_pair(key, value));
+  }
 }
 
+int ParseSubComponent(Url& url, int (Url::*Parser)(std::string& param),
+                      std::string& uri_component, std::string delimiter) {
+  size_t delimiter_pos;
+  std::string sub_component;
+
+  delimiter_pos = uri_component.find(delimiter);
+  if (delimiter_pos != std::string::npos) {
+    if (delimiter == "?") {
+      // additional component
+      sub_component = uri_component.substr(delimiter_pos + delimiter.length());
+      uri_component = uri_component.substr(0, delimiter_pos);
+    } else {
+      sub_component = uri_component.substr(0, delimiter_pos);
+      uri_component = uri_component.substr(delimiter_pos + delimiter.length());
+    }
+    return (url.*Parser)(sub_component);
+  }
+  return OK;
+}
+
+/*
+        URL 클래스 멤버 함수
+*/
 int Url::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
 
@@ -35,9 +59,11 @@ int Url::ParseScheme(std::string& scheme) {
         return ERROR;
       }
     }
+    this->scheme_ = scheme;
     return OK;
+  } else {
+    return ERROR;
   }
-  return ERROR;
 }
 
 int Url::ParseAuthority(std::string& authority) {
@@ -129,15 +155,6 @@ int Url::ParseAuthority(std::string& authority) {
   }
 }
 
-void InsertKeyValuePair(std::map<const std::string, std::string>& map,
-                        const std::string& key, std::string value) {
-  if (value != "") {
-    map[key] = value;
-  } else {
-    map.insert(std::make_pair(key, value));
-  }
-}
-
 int Url::ParsePathSegment(std::string& path_segment) {
   /*
         path-abempty = *( "/" segment )
@@ -211,7 +228,6 @@ int Url::ParseQuery(std::string& query) {
 
   for (size_t i = 0; i < query_length; ++i) {
     char c = query[i];
-
     switch (c) {
       case '%':
         c = Abnf::DecodePctEncoded(query, i);
@@ -234,6 +250,7 @@ int Url::ParseQuery(std::string& query) {
       case '@':
       case '/':
       case '?':
+        ss << c;
         break;
       default:
         if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
@@ -252,18 +269,51 @@ int Url::ParseQuery(std::string& query) {
 }
 
 int Url::ParseUriComponent(std::string& request_uri) {
-  // https://www.example.org/pub/WWW/TheProject.html
-  // scheme "://" authority *(/path;key=value)[? key = value]  #fragment
   /*
-        1. origin form VS absolute from
-        2. parse by specific form
-        3. origin form
-            - split: path-component
-        4. absolute form
-            - split: scheme "://" authority ...
-        5. validation
-            - scheme, host, port , path, parameter ... 각자
-  */
-  (void)request_uri;
+                absolute-form = absolute-URI
+                absolute-URI = scheme ":" hier-part [ "?" query ]
+                hier-part = "//" authority path-abempty
+                path-abempty = *( "/" segment )
+
+                origin-form = absolute-path [ "?" query ]
+                absolute-path = 1*( "/" segment )
+   */
+
+  typedef std::vector<std::string>::iterator pc_iterator;
+
+  // todo - request_uri 존재 여부는 상위 레벨에서 처리되어야 할 것 같다.
+  if (request_uri.length() == 0) {
+    return ERROR;
+  }
+
+  if (ParseSubComponent(*this, &Url::ParseQuery, request_uri, "?") == ERROR) {
+    return ERROR;
+  }
+
+  if (request_uri[0] != '/') {
+    // absolute-form
+    if (ParseSubComponent(*this, &Url::ParseScheme, request_uri, "://") ==
+            ERROR ||
+        ParseSubComponent(*this, &Url::ParseAuthority, request_uri, "/") ==
+            ERROR ||
+        this->scheme_ == "" || this->host_ == "") {
+      return ERROR;
+    }
+  } else {
+    // origin-form
+    request_uri.erase(0, 1);
+  }
+
+  std::vector<std::string> path_component = Split(request_uri, '/');
+  for (pc_iterator pit = path_component.begin(); pit != path_component.end();
+       ++pit) {
+    if (ParsePathSegment(*pit) == ERROR) {
+      return ERROR;
+    }
+  }
+  if (this->path_segments_.size() == 0) {
+    return ERROR;
+  }
+
   return OK;
 }
