@@ -307,6 +307,7 @@ int Url::ParseUriComponent(std::string& request_uri) {
 
   if (request_uri[0] != '/') {
     // absolute-form
+    request_target_form_ = kAbsoluteForm;
     if (ParseSubComponent(*this, &Url::ParseScheme, request_uri, "://") ==
             ERROR ||
         ParseSubComponent(*this, &Url::ParseAuthority, request_uri, "/") ==
@@ -316,6 +317,7 @@ int Url::ParseUriComponent(std::string& request_uri) {
     }
   } else {
     // origin-form
+    request_target_form_ = kOriginForm;
     request_uri.erase(0, 1);
   }
 

@@ -14,6 +14,13 @@
 
 class Url {
  private:
+  enum RequestTargetFrom {
+    kOriginForm,
+    kAbsoluteForm,
+    kAuthorityForm,
+    kAsteriskForm
+  };
+  RequestTargetFrom request_target_form_;
   /*
         URI Component의 구성요소
   */
