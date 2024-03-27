@@ -42,12 +42,11 @@ class Url {
   int ParsePathSegment(std::string& path_component);
   int ParseQuery(std::string& query);
 
-  Url(const Url& obj);
-  Url& operator=(const Url& obj);
-
  public:
   Url();
   ~Url();
+  Url(const Url& obj);
+  Url& operator=(const Url& obj);
 
   int ParseUriComponent(std::string& request_uri);
 };

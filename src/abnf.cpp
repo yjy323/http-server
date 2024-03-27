@@ -1,5 +1,44 @@
 #include "abnf.hpp"
 
+bool Abnf::IsToken(const std::string& s) {
+  // token = 1*tchar
+  for (size_t i = 0; i < s.length(); ++i) {
+    char c = s[i];
+
+    /*
+                        tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
+                                / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+                                / DIGIT / ALPHA
+                                ; any VCHAR, except delimiters
+    */
+    switch (c) {
+      case '!':
+      case '#':
+      case '$':
+      case '%':
+      case '&':
+      case '\'':
+      case '*':
+      case '+':
+      case '-':
+      case '.':
+      case '^':
+      case '_':
+      case '`':
+      case '|':
+      case '~':
+        return true;
+      default:
+        if (std::isalnum(c)) {
+          return true;
+        } else {
+          return false;
+        }
+    }
+  }
+  return true;
+}
+
 bool Abnf::IsUnreserved(char c) {
   // unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
   if (std::isalnum(c)) {
