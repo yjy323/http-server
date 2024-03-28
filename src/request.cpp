@@ -16,16 +16,10 @@ Request& Request::operator=(const Request& obj) {
 }
 
 int Request::ParseMethod(std::string& method) {
-  // method = token = 1*tchar
-  if (method.length() == 0) {
+  // method = token
+  if (method.length() == 0 || Abnf::IsToken(method) == ERROR) {
     return ERROR;
   }
-  for (size_t i = 0; i < method.length(); ++i) {
-    if (!Abnf::IsTchar(method[i])) {
-      return ERROR;
-    }
-  }
-
   this->method_ = method;
   return OK;
 }
@@ -59,5 +53,42 @@ int Request::ParseRequestLine(std::string& request_line) {
     return ERROR;
   }
 
+  return OK;
+}
+
+int Request::ParseHttpHeader(std::string& header) {
+  /*
+                field-line = field-name ":" OWS field-value OWS
+                field-name = token
+
+                field-value = *field-content
+                field-content = field-vchar
+                        [ 1*( SP / HTAB / field-vchar ) field-vchar ]
+                field-vchar = VCHAR / obs-text
+                VCHAR =  %x21-7E ; visible (printing) characters
+                obs-text = %x80-FF
+  */
+  std::string field_name;
+  std::string field_value;
+  size_t delimiter_pos = header.find(':');
+  if (delimiter_pos == std::string::npos) {
+    return ERROR;
+  }
+
+  field_name = header.substr(0, delimiter_pos);
+  if (field_name.length() == 0 || Abnf::IsToken(field_name) == ERROR) {
+    return ERROR;
+  }
+
+  field_value = Trim(field_value);
+  for (size_t i = 0; i < field_value.length(); i++) {
+    unsigned char c = field_value[i];
+    if (Abnf::IsVchar(c) || Abnf::IsObsText(c) || Abnf::IsWhiteSpace(c)) {
+      continue;
+    } else {
+      return ERROR;
+    }
+  }
+  this->headers_.insert(std::make_pair(field_name, field_value));
   return OK;
 }

@@ -17,7 +17,7 @@ class Request {
   int major_version_;
   int minor_version_;
 
-  std::map<const std::string, std::string> headers_;
+  std::multimap<const std::string, std::string> headers_;
   std::string body_;
 
   int ParseMethod(std::string& method);

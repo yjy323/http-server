@@ -1,5 +1,32 @@
 #include "abnf.hpp"
 
+bool Abnf::IsWhiteSpace(char c) {
+  // WS = SP / HTAB
+  if (c == 9 || c == 32) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool Abnf::IsVchar(char c) {
+  // VCHAR =  %x21-7E
+  if (c < 33 || c > 126) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+bool Abnf::IsObsText(char c) {
+  // obs-text = %x80-FF
+  if (c < 128 || c > 255) {
+    return false;
+  } else {
+    return true;
+  }
+}
+
 bool Abnf::IsToken(const std::string& s) {
   // token = 1*tchar
   for (size_t i = 0; i < s.length(); ++i) {
