@@ -133,3 +133,18 @@ int Request::ReceiveRequest(char* buff, ssize_t size) {
 
   return OK;
 }
+
+const std::string& Request::getMethod() const { return this->method_; }
+
+const Url& Request::getUrl() const { return this->url_; }
+
+int Request::getMajorVersion() const { return this->major_version_; }
+
+int Request::getMinorVersion() const { return this->minor_version_; }
+
+const std::multimap<const std::string, std::string>& Request::getHeaders()
+    const {
+  return this->headers_;
+}
+
+const std::string& Request::getBody() const { return this->body_; }

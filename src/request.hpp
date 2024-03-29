@@ -38,6 +38,13 @@ class Request {
   Request& operator=(const Request& obj);
 
   int ReceiveRequest(char* buff, ssize_t size);
+
+  const std::string& getMethod() const;
+  const Url& getUrl() const;
+  int getMajorVersion() const;
+  int getMinorVersion() const;
+  const std::multimap<const std::string, std::string>& getHeaders() const;
+  const std::string& getBody() const;
 };
 
 #endif
