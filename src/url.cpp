@@ -150,12 +150,11 @@ int Url::ParseAuthority(std::string& authority) {
         char c = authority[i];
 
         switch (c) {
-          case '%':
-            c = Abnf::DecodePctEncoded(authority, i);
-            if (c == -1) {
-              return ERROR;
-            }
-            break;
+          c = Abnf::DecodePctEncoded(authority, i);
+          authority_length = authority.length();
+          if (c < 0) {
+            return ERROR;
+          }
           default:
             if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
               return ERROR;
@@ -191,10 +190,10 @@ int Url::ParsePathSegment(std::string& path_segment) {
     switch (c) {
       case '%':
         c = Abnf::DecodePctEncoded(path_segment, i);
-        if (c == -1) {
+        path_segment_length = path_segment.length();
+        if (c < 0) {
           return ERROR;
         }
-        break;
       case ';':
         if (is_before_param) {
           path_segment_obj.path = ss.str();
@@ -246,10 +245,10 @@ int Url::ParseQuery(std::string& query) {
     switch (c) {
       case '%':
         c = Abnf::DecodePctEncoded(query, i);
-        if (c == -1) {
+        query_length = query.length();
+        if (c < 0) {
           return ERROR;
         }
-        break;
       case '&':
         if (key != "") {
           InsertKeyValuePair(query_, key, ss.str());
