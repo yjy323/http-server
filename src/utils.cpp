@@ -5,7 +5,6 @@ void ToCaseInsensitve(std::string& str) {
     str[i] = std::tolower(str[i]);
   }
 }
-
 std::string Trim(const std::string s) {
   size_t front = 0;
   size_t back = s.npos;

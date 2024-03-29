@@ -17,7 +17,8 @@ Request& Request::operator=(const Request& obj) {
 
 int Request::ParseMethod(std::string& method) {
   // method = token
-  if (method.length() == 0 || Abnf::IsToken(method) == ERROR) {
+
+  if (method.length() == 0 || !Abnf::IsToken(method)) {
     return ERROR;
   }
   this->method_ = method;
@@ -34,7 +35,7 @@ int Request::ParseHttpVersion(std::string& http_version) {
           HTTP-version = HTTP-name "/" DIGIT "." DIGIT
           HTTP-name = %s"HTTP"
   */
-  if (http_version != "HTTP/1.1" || http_version != "HTTP/1.0") {
+  if (http_version != "HTTP/1.1" && http_version != "HTTP/1.0") {
     return ERROR;
   }
 
@@ -52,7 +53,6 @@ int Request::ParseRequestLine(std::string& request_line) {
              ParseHttpVersion(request_line_component[2]) == ERROR) {
     return ERROR;
   }
-
   return OK;
 }
 
@@ -76,11 +76,11 @@ int Request::ParseHttpHeader(std::string& header) {
   }
 
   field_name = header.substr(0, delimiter_pos);
-  if (field_name.length() == 0 || Abnf::IsToken(field_name) == ERROR) {
+  if (field_name.length() == 0 || !Abnf::IsToken(field_name)) {
     return ERROR;
   }
 
-  field_value = Trim(field_value);
+  field_value = Trim(header.substr(delimiter_pos + 1));
   for (size_t i = 0; i < field_value.length(); i++) {
     unsigned char c = field_value[i];
     if (Abnf::IsVchar(c) || Abnf::IsObsText(c) || Abnf::IsWhiteSpace(c)) {
@@ -90,5 +90,46 @@ int Request::ParseHttpHeader(std::string& header) {
     }
   }
   this->headers_.insert(std::make_pair(field_name, field_value));
+  return OK;
+}
+
+int Request::ReceiveRequest(char* buff, ssize_t size) {
+  /*
+          HTTP-message = start-line CRLF
+                        *( field-line CRLF )
+                        CRLF
+                        [ message-body ]
+  */
+  std::stringstream ss;
+  ssize_t offset = 0;
+  bool start_line_flag = true;
+
+  for (; offset < size; ++offset) {
+    char c = buff[offset];
+    ss << c;
+    if (c == '\n' && (offset > 0 && buff[offset - 1] == '\r')) {
+      std::string line = ss.str();
+      ss.str(std::string());
+      line = line.substr(0, line.length() - 2);
+
+      if (start_line_flag) {
+        if (line.empty()) {
+          continue;
+        } else {
+          if (this->ParseRequestLine(line) == ERROR) {
+            return ERROR;
+          }
+          start_line_flag = false;
+        }
+      } else {
+        if (line.empty()) {
+          break;
+        } else if (this->ParseHttpHeader(line) == ERROR) {
+          return ERROR;
+        }
+      }
+    }
+  }
+
   return OK;
 }

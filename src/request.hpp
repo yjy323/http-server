@@ -1,6 +1,8 @@
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
+#include <sys/socket.h>
+
 #include <iostream>
 #include <map>
 #include <vector>
@@ -10,10 +12,12 @@
 #include "url.hpp"
 #include "utils.hpp"
 
+#define BUFFER_SIZE 4096
+
 class Request {
  private:
   std::string method_;
-  Url url_;  // todo - Url 클래스로 치환
+  Url url_;
   int major_version_;
   int minor_version_;
 
@@ -25,7 +29,7 @@ class Request {
   int ParseHttpVersion(std::string& http_version);
   int ParseRequestLine(std::string& request_line);
 
-  int ParseHttpHeader(std::string& header) {}
+  int ParseHttpHeader(std::string& header);
 
  public:
   Request();
@@ -33,7 +37,7 @@ class Request {
   ~Request();
   Request& operator=(const Request& obj);
 
-  int ParseRequest();
+  int ReceiveRequest(char* buff, ssize_t size);
 };
 
 #endif

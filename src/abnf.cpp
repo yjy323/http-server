@@ -18,7 +18,7 @@ bool Abnf::IsVchar(char c) {
   }
 }
 
-bool Abnf::IsObsText(char c) {
+bool Abnf::IsObsText(unsigned char c) {
   // obs-text = %x80-FF
   if (c < 128 || c > 255) {
     return false;
