@@ -50,6 +50,14 @@ class Url {
   ~Url();
 
   int ParseUriComponent(std::string& request_uri);
+
+  const std::string& getScheme() const;
+  const std::string& getUser() const;
+  const std::string& getPassword() const;
+  const std::string& getHost() const;
+  int getPort() const;
+  const std::list<PathSegment>& getPathSegments() const;
+  const std::map<const std::string, std::string>& getQuery() const;
 };
 
 #endif
