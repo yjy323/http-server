@@ -30,7 +30,9 @@ std::vector<std::string> Split(std::string& str, const char delimiter) {
   std::vector<std::string> buffer_container;
 
   while (getline(iss, buffer, delimiter)) {
-    buffer_container.push_back(buffer);
+    if (buffer.length() > 0) {
+      buffer_container.push_back(buffer);
+    }
   }
   return buffer_container;
 }
@@ -42,7 +44,9 @@ const std::vector<const std::string> Split(const std::string& str,
   std::vector<const std::string> buffer_container;
 
   while (getline(iss, buffer, delimiter)) {
-    buffer_container.push_back(buffer);
+    if (buffer.length() > 0) {
+      buffer_container.push_back(buffer);
+    }
   }
   return buffer_container;
 }

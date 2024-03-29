@@ -31,7 +31,6 @@ bool Abnf::IsToken(const std::string& s) {
   // token = 1*tchar
   for (size_t i = 0; i < s.length(); ++i) {
     char c = s[i];
-
     /*
                         tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*"
                                 / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
@@ -54,10 +53,10 @@ bool Abnf::IsToken(const std::string& s) {
       case '`':
       case '|':
       case '~':
-        return true;
+        break;
       default:
         if (std::isalnum(c)) {
-          return true;
+          break;
         } else {
           return false;
         }
