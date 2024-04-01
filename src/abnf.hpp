@@ -7,6 +7,7 @@
 class Abnf {
  private:
  public:
+  static bool IsHost(std::string& s);
   static bool IsWhiteSpace(char c);
   static bool IsVchar(char c);
   static bool IsObsText(unsigned char c);

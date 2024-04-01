@@ -97,76 +97,21 @@ int Url::ParseAuthority(std::string& authority) {
   if (delimiter_pos != std::string::npos) {
     // port = *DIGIT
     sub_component = authority.substr(delimiter_pos + 1);
-    authority = authority.substr(0, delimiter_pos);
-
     long port = strtol(sub_component.c_str(), &end_ptr, 10);
     if (end_ptr == sub_component || *end_ptr != 0 || port < 0 || port > 65535) {
       return ERROR;
     }
     this->port_ = port;
+
+    authority = authority.substr(0, delimiter_pos);
   }
 
-  // host = IP-literal / IPv4address / reg-name
-  size_t authority_length = authority.length();
-  if (authority_length == 0) {
-    /*
-        A recipient that processes "http" URI with an empty host identifier
-                reference MUST reject it as invalid.
-        Section 4.2.1 of [HTTP]
-    */
+  if (!Abnf::IsHost(authority)) {
     return ERROR;
-  } else if (authority[0] == '[') {
-    // IP-literal = "[" ( IPv6address / IPvFuture ) "]"
-    // 네트워크 정책 상 IPv6를 지원하지 않는다.
-    return ERROR;
-
-  } else {
-    // IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet
-    /*
-            dec-octet = DIGIT               ; 0-9
-                        / %x31-39 DIGIT     ; 10-99
-                        / "1" 2DIGIT        ; 100-199
-                        / "2" %x30-34 DIGIT ; 200-249
-                        / "25" %x30-35      ; 250-255
-    */
-
-    bool is_ip_v4_address = true;
-    size_t pre_delimiter_pos = 0;
-    for (int i = 0; i < 4; ++i) {
-      delimiter_pos = authority.find(".", pre_delimiter_pos);
-      sub_component = authority.substr(pre_delimiter_pos, delimiter_pos);
-      pre_delimiter_pos = delimiter_pos;
-      long dec_octet = strtol(sub_component.c_str(), &end_ptr, 10);
-      if (end_ptr == sub_component || *end_ptr != 0 || dec_octet < 0 ||
-          dec_octet > 255) {
-        is_ip_v4_address = false;
-        break;
-      }
-    }
-
-    if (is_ip_v4_address == false) {
-      // reg-name = *( unreserved / pct-encoded / sub-delims )
-      for (size_t i = 0; i < authority_length; ++i) {
-        char c = authority[i];
-
-        switch (c) {
-          c = Abnf::DecodePctEncoded(authority, i);
-          authority_length = authority.length();
-          if (c < 0) {
-            return ERROR;
-          }
-          default:
-            if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
-              return ERROR;
-            }
-            break;
-        }
-      }
-    }
-
-    this->host_ = authority;
-    return OK;
   }
+
+  this->host_ = authority;
+  return OK;
 }
 
 int Url::ParsePathSegment(std::string& path_segment) {

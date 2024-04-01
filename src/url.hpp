@@ -12,22 +12,27 @@
 #include "abnf.hpp"
 #include "utils.hpp"
 
+#define MAX_URI_LENGTH 8000  // Todo: 최대 길이 정의
+
 class Url {
- private:
+ public:
   enum RequestTargetFrom {
     kOriginForm,
     kAbsoluteForm,
     kAuthorityForm,
     kAsteriskForm
   };
-  RequestTargetFrom request_target_form_;
-  /*
-        URI Component의 구성요소
-  */
+
   struct PathSegment {
     std::string path;
     std::map<const std::string, std::string> parameter;
   };
+
+ private:
+  RequestTargetFrom request_target_form_;
+  /*
+        URI Component의 구성요소
+  */
 
   std::string scheme_;
   std::string user_;
