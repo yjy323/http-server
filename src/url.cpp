@@ -278,21 +278,3 @@ int Url::ParseUriComponent(std::string& request_uri) {
 
   return OK;
 }
-
-const std::string& Url::getScheme() const { return this->scheme_; }
-
-const std::string& Url::getUser() const { return this->user_; }
-
-const std::string& Url::getPassword() const { return this->password_; }
-
-const std::string& Url::getHost() const { return this->host_; }
-
-int Url::getPort() const { return this->port_; }
-
-const std::list<Url::PathSegment>& Url::getPathSegments() const {
-  return this->path_segments_;
-}
-
-const std::map<const std::string, std::string>& Url::getQuery() const {
-  return this->query_;
-}

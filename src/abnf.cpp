@@ -1,5 +1,7 @@
 #include "abnf.hpp"
 
+bool Abnf::IsOctet(char c) { return (static_cast<unsigned char>(c) <= 255); }
+
 bool Abnf::IsHost(std::string& s) {
   // host = IP-literal / IPv4address / reg-name
   size_t delimiter_pos;

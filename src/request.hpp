@@ -3,6 +3,7 @@
 
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <iostream>
 #include <map>
 #include <vector>
@@ -19,6 +20,8 @@ class Request {
  private:
   typedef std::map<const std::string, std::string>::iterator HeadersIterator;
 
+  int status_code_;
+
   std::string method_;
   Url url_;
   int major_version_;
@@ -26,8 +29,9 @@ class Request {
 
   std::map<const std::string, std::string> headers_;
   std::string http_host_;
-  size_t http_content_length_;
+  ssize_t http_content_length_;
   std::vector<std::string> http_transfer_encoding_;
+  bool chunked_encoding_signal_;
   std::string http_connection_;
   std::string body_;
 
@@ -35,12 +39,18 @@ class Request {
   int ParseRequestTarget(std::string& request_target);
   int ParseHttpVersion(std::string& http_version);
   int ParseRequestLine(std::string& request_line);
-
   int ParseCombinedFieldValue(std::string& field_name,
                               std::string& combined_field_value);
   int ParseFieldValue(std::string& header);
 
-  int ParseStandardHeader();
+  int ValidateHttpHostHeader(HeadersIterator& end);
+  int ValidateHttpTransferEncodingHeader(HeadersIterator& end);
+  int ValidateHttpContentLengthHeader(HeadersIterator& end);
+  int ValidateStandardHttpHeader();
+
+  int ParseRequestHeader(char* buff, ssize_t size, ssize_t& offset);
+  int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
+  int DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset);
 
  public:
   Request();
@@ -48,18 +58,7 @@ class Request {
   ~Request();
   Request& operator=(const Request& obj);
 
-  int ReceiveRequest(char* buff, ssize_t size);
-
-  const std::string& get_method() const;
-  const Url& get_url() const;
-  int get_major_version() const;
-  int get_minor_version() const;
-  const std::map<const std::string, std::string>& get_headers() const;
-
-  const std::vector<std::string> get_http_transfer_encoding() const;
-  int get_http_content_length() const;
-
-  const std::string& get_body() const;
+  int RequestMessage(char* buff, ssize_t& size);
 };
 
 #endif

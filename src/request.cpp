@@ -1,6 +1,6 @@
 #include "request.hpp"
 
-Request::Request() : url_(Url()) {}
+Request::Request() : url_(Url()), http_content_length_(-1) {}
 Request::Request(const Request& obj) { *this = obj; }
 Request::~Request() {}
 Request& Request::operator=(const Request& obj) {
@@ -116,8 +116,7 @@ int Request::ParseFieldValue(std::string& field_line) {
   return OK;
 }
 
-int Request::ParseStandardHeader() {
-  HeadersIterator end = this->headers_.end();
+int Request::ValidateHttpHostHeader(HeadersIterator& end) {
   std::string field_value;
   char* end_ptr;
 
@@ -143,13 +142,18 @@ int Request::ParseStandardHeader() {
 
       field_value = field_value.substr(0, delimiter_pos);
     }
-
-    if (!Abnf::IsHost(field_value)) {
-      return ERROR;
+    if (field_value.length() == 0 || !Abnf::IsHost(field_value)) {
+      return this->status_code_ = ERROR;
     }
   }
 
-  it = this->headers_.find("transfer-encoding");
+  return OK;
+}
+
+int Request::ValidateHttpTransferEncodingHeader(HeadersIterator& end) {
+  HeadersIterator it = this->headers_.find("transfer-encoding");
+  std::string field_value;
+
   if (it != end) {
     field_value = it->second;
     std::vector<std::string> buffer = Split(field_value, ',');
@@ -162,15 +166,26 @@ int Request::ParseStandardHeader() {
       token = Trim(*buffer_it);
       token = token.substr(0, token.find(';'));
       ToCaseInsensitve(token);
-      this->http_transfer_encoding_.push_back(token);
+      if (!Abnf::IsToken(token)) {
+        return ERROR;
+      } else if (token != "chunked") {
+        // chunked 외의 전송 코딩은 지원하지 않는다.
+        // 확장성을 위해 vector<string transfer-coding>으로 관리한다.
+        return 501;
+      } else {
+        chunked_encoding_signal_ = true;
+        this->http_transfer_encoding_.push_back(token);
+      }
     }
   }
+  return OK;
+}
+int Request::ValidateHttpContentLengthHeader(HeadersIterator& end) {
+  HeadersIterator it = this->headers_.find("content-length");
+  std::string field_value;
+  char* end_ptr;
 
-  it = this->headers_.find("content-length");
   if (it != end) {
-    if (this->headers_.find("transfer-encoding") != end) {
-      return ERROR;
-    }
     field_value = it->second;
     long content_length = strtol(field_value.c_str(), &end_ptr, 10);
     if (end_ptr == field_value || *end_ptr != 0) {
@@ -181,7 +196,18 @@ int Request::ParseStandardHeader() {
   return OK;
 }
 
-int Request::ReceiveRequest(char* buff, ssize_t size) {
+int Request::ValidateStandardHttpHeader() {
+  HeadersIterator end = this->headers_.end();
+
+  if (ValidateHttpHostHeader(end) == ERROR ||
+      ValidateHttpTransferEncodingHeader(end) == ERROR ||
+      ValidateHttpContentLengthHeader(end) == ERROR) {
+    return ERROR;
+  }
+  return OK;
+}
+
+int Request::ParseRequestHeader(char* buff, ssize_t size, ssize_t& offset) {
   /*
           HTTP-message = start-line CRLF
                         *( field-line CRLF )
@@ -189,7 +215,6 @@ int Request::ReceiveRequest(char* buff, ssize_t size) {
                         [ message-body ]
   */
   std::stringstream ss;
-  ssize_t offset = 0;
   bool start_line_flag = true;
 
   for (; offset < size; ++offset) {
@@ -204,42 +229,61 @@ int Request::ReceiveRequest(char* buff, ssize_t size) {
         if (line.empty()) {
           continue;
         } else {
-          if (this->ParseRequestLine(line) == ERROR) {
-            return ERROR;
+          if (this->ParseRequestLine(line) != OK) {
+            return this->status_code_ = ERROR;
           }
           start_line_flag = false;
         }
       } else {
         if (line.empty()) {
           break;
-        } else if (this->ParseFieldValue(line) == ERROR) {
-          return ERROR;
+        } else {
+          if (this->ParseFieldValue(line) != OK) {
+            return this->status_code_ = ERROR;
+          }
         }
       }
     }
   }
-  if (ParseStandardHeader() == ERROR) {
-    return ERROR;
-  }
 
+  if (this->ValidateStandardHttpHeader() != OK) {
+    return this->status_code_;
+  }
   return OK;
 }
 
-const std::string& Request::get_method() const { return this->method_; }
+// int Request::DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset)
+// {}
 
-const Url& Request::get_url() const { return this->url_; }
-
-int Request::get_major_version() const { return this->major_version_; }
-
-int Request::get_minor_version() const { return this->minor_version_; }
-
-const std::map<const std::string, std::string>& Request::get_headers() const {
-  return this->headers_;
+int Request::ParseRequestBody(char* buff, ssize_t size, ssize_t& offset) {
+  std::stringstream ss;
+  if (chunked_encoding_signal_) {
+  } else {
+    for (; offset < size; ++offset) {
+      char c = buff[offset];
+      if (Abnf::IsOctet(c)) {
+        ss << c;
+      } else {
+        return this->status_code_ = ERROR;
+      }
+    }
+    this->body_ += ss.str();
+  }
+  return OK;
 }
 
-const std::vector<std::string> Request::get_http_transfer_encoding() const {
-  return this->http_transfer_encoding_;
-}
+int Request::RequestMessage(char* buff, ssize_t& size) {
+  ssize_t offset = 0;
+  if (ParseRequestHeader(buff, size, offset) != OK) {
+    return this->status_code_;
+  }
 
-int Request::get_http_content_length() const { return this->http_content_length_; }
-const std::string& Request::get_body() const { return this->body_; }
+  if (chunked_encoding_signal_ & (http_content_length_ > -1)) {
+    return ERROR;
+  } else if (chunked_encoding_signal_ | (http_content_length_ > -1)) {
+    if (ParseRequestBody(buff, size, ++offset) != OK) {
+      return this->status_code_;
+    }
+  }
+  return this->status_code_;
+}
