@@ -7,6 +7,8 @@
 
 void ToCaseInsensitve(std::string& str);
 
+std::string Trim(std::string s);
+
 std::vector<std::string> Split(std::string& str, const char delimiter);
 const std::vector<const std::string> Split(const std::string& str,
                                            const char delimiter);

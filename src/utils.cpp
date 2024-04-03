@@ -5,6 +5,24 @@ void ToCaseInsensitve(std::string& str) {
     str[i] = std::tolower(str[i]);
   }
 }
+std::string Trim(const std::string s) {
+  size_t front = 0;
+  size_t back = s.npos;
+
+  for (; front < s.length(); ++front) {
+    if (s[front] != 9 && s[front] != 32) {
+      break;
+    }
+  }
+
+  for (; back >= 0; --back) {
+    if (s[back] != 9 && s[back] != 32) {
+      break;
+    }
+  }
+
+  return s.substr(front, back);
+}
 
 std::vector<std::string> Split(std::string& str, const char delimiter) {
   std::istringstream iss(str);
@@ -12,7 +30,9 @@ std::vector<std::string> Split(std::string& str, const char delimiter) {
   std::vector<std::string> buffer_container;
 
   while (getline(iss, buffer, delimiter)) {
-    buffer_container.push_back(buffer);
+    if (buffer.length() > 0) {
+      buffer_container.push_back(buffer);
+    }
   }
   return buffer_container;
 }
@@ -24,7 +44,9 @@ const std::vector<const std::string> Split(const std::string& str,
   std::vector<const std::string> buffer_container;
 
   while (getline(iss, buffer, delimiter)) {
-    buffer_container.push_back(buffer);
+    if (buffer.length() > 0) {
+      buffer_container.push_back(buffer);
+    }
   }
   return buffer_container;
 }
