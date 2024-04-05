@@ -274,3 +274,18 @@ int Uri::ParseUriComponent(std::string& request_uri) {
 
   return OK;
 }
+
+int Uri::ReconstructTargetUri(std::string& request_host) {
+  if (this->request_target_form_ == kOriginForm) {
+    this->scheme_ = "http";
+    this->host_ = request_host;
+  }
+  typedef std::list<Uri::PathSegment>::iterator ps_iterator;
+
+  // this->request_target_ = docroot;
+  for (ps_iterator it = this->path_segments_.begin();
+       it != this->path_segments_.end(); ++it) {
+    this->request_target_ += "/" + (*it).path;
+  }
+  return OK;
+}
