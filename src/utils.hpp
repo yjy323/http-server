@@ -7,4 +7,6 @@
 const std::vector<const std::string> split(const std::string& str,
                                            const std::string& sep);
 
+void* Memset(void* b, const int c, const size_t len);
+
 #endif
