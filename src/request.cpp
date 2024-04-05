@@ -89,7 +89,7 @@ int Request::ParseFieldValue(std::string& field_line) {
   }
 
   field_name = field_line.substr(0, delimiter_pos);
-  ToCaseInsensitve(field_name);
+  field_name = ToCaseInsensitive(field_name);
   if (field_name.length() == 0 || !Abnf::IsToken(field_name)) {
     return ERROR;
   }
@@ -165,7 +165,7 @@ int Request::ValidateHttpTransferEncodingHeader(HeadersIterator& end) {
     for (; buffer_it < buffer_end; ++buffer_it) {
       token = Trim(*buffer_it);
       token = token.substr(0, token.find(';'));
-      ToCaseInsensitve(token);
+      token = ToCaseInsensitive(token);
       if (!Abnf::IsToken(token)) {
         return ERROR;
       } else if (token != "chunked") {

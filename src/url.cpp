@@ -63,7 +63,7 @@ Url& Url::operator=(const Url& obj) {
 int Url::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
 
-  ToCaseInsensitve(scheme);
+  scheme = ToCaseInsensitive(scheme);
   if (std::isalpha(scheme[0])) {
     int i = 0;
     while (scheme[++i]) {

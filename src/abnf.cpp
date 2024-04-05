@@ -172,6 +172,7 @@ bool Abnf::IsSubDlims(char c) {
   }
 }
 
+/*Todo: Decoding이 파싱 단계에서 필요한가?*/
 char Abnf::DecodePctEncoded(std::string& s, const size_t pos) {
   if (pos + 2 >= s.length() || !std::isxdigit(s[pos + 1]) ||
       !std::isxdigit(s[pos + 2])) {

@@ -5,7 +5,8 @@
 #include <string>
 #include <vector>
 
-void ToCaseInsensitve(std::string& str);
+std::string ToRfc850TimeFormat(const std::time_t& time);
+std::string ToCaseInsensitive(std::string str);
 
 std::string Trim(std::string s);
 
