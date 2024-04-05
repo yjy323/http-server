@@ -1,5 +1,5 @@
-#ifndef URL_HPP
-#define URL_HPP
+#ifndef URI_HPP
+#define URI_HPP
 
 #include <cctype>
 #include <iostream>
@@ -14,7 +14,9 @@
 
 #define MAX_URI_LENGTH 8000  // Todo: 최대 길이 정의
 
-class Url {
+class Request;
+
+class Uri {
  public:
   enum RequestTargetFrom {
     kOriginForm,
@@ -48,12 +50,13 @@ class Url {
   int ParseQuery(std::string& query);
 
  public:
-  Url();
-  ~Url();
-  Url(const Url& obj);
-  Url& operator=(const Url& obj);
+  Uri();
+  ~Uri();
+  Uri(const Uri& obj);
+  Uri& operator=(const Uri& obj);
 
   int ParseUriComponent(std::string& request_uri);
+  int ReconstructTargetUri(Request& request);
 };
 
 #endif
