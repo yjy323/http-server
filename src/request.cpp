@@ -1,12 +1,12 @@
 #include "request.hpp"
 
-Request::Request() : url_(Url()), http_content_length_(-1) {}
+Request::Request() : uri_(Uri()), http_content_length_(-1) {}
 Request::Request(const Request& obj) { *this = obj; }
 Request::~Request() {}
 Request& Request::operator=(const Request& obj) {
   if (this != &obj) {
     this->method_ = obj.method_;
-    this->url_ = obj.url_;
+    this->uri_ = obj.uri_;
     this->major_version_ = obj.major_version_;
     this->minor_version_ = obj.minor_version_;
     this->headers_ = obj.headers_;
@@ -27,7 +27,7 @@ int Request::ParseMethod(std::string& method) {
 
 int Request::ParseRequestTarget(std::string& request_target) {
   // request-uri
-  return this->url_.ParseUriComponent(request_target);
+  return this->uri_.ParseUriComponent(request_target);
 }
 
 int Request::ParseHttpVersion(std::string& http_version) {

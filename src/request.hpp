@@ -10,20 +10,20 @@
 
 #include "abnf.hpp"
 #include "core.hpp"
-#include "url.hpp"
+#include "uri.hpp"
 #include "utils.hpp"
 
 #define BUFFER_SIZE 4096
 #define BODY_SIZE 8000  // Todo: 최대 길이 결정
 
 class Request {
- private:
+ public:
   typedef std::map<const std::string, std::string>::iterator HeadersIterator;
 
   int status_code_;
 
   std::string method_;
-  Url url_;
+  Uri uri_;
   int major_version_;
   int minor_version_;
 

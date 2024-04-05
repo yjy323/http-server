@@ -1,16 +1,16 @@
-#include "url.hpp"
+#include "uri.hpp"
 
 // 임시
 #define OK 0
 #define ERROR 1
 
 /*
-        url.cpp에 사용되는 비멤버 함수
+        uri.cpp에 사용되는 비멤버 함수
 */
 static void InsertKeyValuePair(std::map<const std::string, std::string>& map,
                                const std::string& key, std::string value);
 
-static int ParseSubComponent(Url& url, int (Url::*Parser)(std::string& param),
+static int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
                              std::string& uri_component, std::string delimiter);
 
 void InsertKeyValuePair(std::map<const std::string, std::string>& map,
@@ -22,7 +22,7 @@ void InsertKeyValuePair(std::map<const std::string, std::string>& map,
   }
 }
 
-int ParseSubComponent(Url& url, int (Url::*Parser)(std::string& param),
+int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
                       std::string& uri_component, std::string delimiter) {
   size_t delimiter_pos;
   std::string sub_component;
@@ -37,19 +37,19 @@ int ParseSubComponent(Url& url, int (Url::*Parser)(std::string& param),
       sub_component = uri_component.substr(0, delimiter_pos);
       uri_component = uri_component.substr(delimiter_pos + delimiter.length());
     }
-    return (url.*Parser)(sub_component);
+    return (uri.*Parser)(sub_component);
   }
   return OK;
 }
 
 /*
-        URL 클래스 멤버 함수
+        URI 클래스 멤버 함수
 */
-Url::Url() {}
-Url::~Url() {}
+Uri::Uri() {}
+Uri::~Uri() {}
 
-Url::Url(const Url& obj) { *this = obj; }
-Url& Url::operator=(const Url& obj) {
+Uri::Uri(const Uri& obj) { *this = obj; }
+Uri& Uri::operator=(const Uri& obj) {
   if (this != &obj) {
     this->scheme_ = obj.scheme_;
     this->host_ = obj.host_;
@@ -60,7 +60,7 @@ Url& Url::operator=(const Url& obj) {
   return *this;
 }
 
-int Url::ParseScheme(std::string& scheme) {
+int Uri::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
 
   ToCaseInsensitve(scheme);
@@ -81,7 +81,7 @@ int Url::ParseScheme(std::string& scheme) {
   }
 }
 
-int Url::ParseAuthority(std::string& authority) {
+int Uri::ParseAuthority(std::string& authority) {
   // Section 3.2 of [URI]
   size_t delimiter_pos;
   std::string sub_component;
@@ -114,7 +114,7 @@ int Url::ParseAuthority(std::string& authority) {
   return OK;
 }
 
-int Url::ParsePathSegment(std::string& path_segment) {
+int Uri::ParsePathSegment(std::string& path_segment) {
   /*
         path-abempty = *( "/" segment )
 
@@ -134,9 +134,7 @@ int Url::ParsePathSegment(std::string& path_segment) {
 
     switch (c) {
       case '%':
-        c = Abnf::DecodePctEncoded(path_segment, i);
-        path_segment_length = path_segment.length();
-        if (c < 0) {
+        if (!Abnf::IsPctEncoded(path_segment, i)) {
           return ERROR;
         }
       case ';':
@@ -175,7 +173,7 @@ int Url::ParsePathSegment(std::string& path_segment) {
   return OK;
 }
 
-int Url::ParseQuery(std::string& query) {
+int Uri::ParseQuery(std::string& query) {
   // query = *( pchar / "/" / "?" )
   // pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
 
@@ -189,9 +187,7 @@ int Url::ParseQuery(std::string& query) {
     char c = query[i];
     switch (c) {
       case '%':
-        c = Abnf::DecodePctEncoded(query, i);
-        query_length = query.length();
-        if (c < 0) {
+        if (!Abnf::IsPctEncoded(query, i)) {
           return ERROR;
         }
       case '&':
@@ -227,7 +223,7 @@ int Url::ParseQuery(std::string& query) {
   return OK;
 }
 
-int Url::ParseUriComponent(std::string& request_uri) {
+int Uri::ParseUriComponent(std::string& request_uri) {
   /*
                 absolute-form = absolute-URI
                 absolute-URI = scheme ":" hier-part [ "?" query ]
@@ -245,16 +241,16 @@ int Url::ParseUriComponent(std::string& request_uri) {
     return ERROR;
   }
 
-  if (ParseSubComponent(*this, &Url::ParseQuery, request_uri, "?") == ERROR) {
+  if (ParseSubComponent(*this, &Uri::ParseQuery, request_uri, "?") == ERROR) {
     return ERROR;
   }
 
   if (request_uri[0] != '/') {
     // absolute-form
     request_target_form_ = kAbsoluteForm;
-    if (ParseSubComponent(*this, &Url::ParseScheme, request_uri, "://") ==
+    if (ParseSubComponent(*this, &Uri::ParseScheme, request_uri, "://") ==
             ERROR ||
-        ParseSubComponent(*this, &Url::ParseAuthority, request_uri, "/") ==
+        ParseSubComponent(*this, &Uri::ParseAuthority, request_uri, "/") ==
             ERROR ||
         this->scheme_ == "" || this->host_ == "") {
       return ERROR;
@@ -276,5 +272,20 @@ int Url::ParseUriComponent(std::string& request_uri) {
     return ERROR;
   }
 
+  return OK;
+}
+
+int Uri::ReconstructTargetUri(std::string& request_host) {
+  if (this->request_target_form_ == kOriginForm) {
+    this->scheme_ = "http";
+    this->host_ = request_host;
+  }
+  typedef std::list<Uri::PathSegment>::iterator ps_iterator;
+
+  // this->request_target_ = docroot;
+  for (ps_iterator it = this->path_segments_.begin();
+       it != this->path_segments_.end(); ++it) {
+    this->request_target_ += "/" + (*it).path;
+  }
   return OK;
 }
