@@ -10,7 +10,7 @@
 
 #include "abnf.hpp"
 #include "core.hpp"
-#include "url.hpp"
+#include "uri.hpp"
 #include "utils.hpp"
 
 #define BUFFER_SIZE 4096
@@ -21,7 +21,7 @@ class Request {
   typedef std::map<const std::string, std::string>::iterator HeadersIterator;
 
   std::string method_;
-  Url url_;
+  Uri uri_;
   int major_version_;
   int minor_version_;
 

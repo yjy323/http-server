@@ -50,9 +50,7 @@ bool Abnf::IsHost(std::string& s) {
         char c = s[i];
 
         switch (c) {
-          c = Abnf::DecodePctEncoded(s, i);
-          length = s.length();
-          if (c < 0) {
+          if (!Abnf::IsPctEncoded(s, i)) {
             return false;
           }
           default:
@@ -172,14 +170,10 @@ bool Abnf::IsSubDlims(char c) {
   }
 }
 
-/*Todo: Decoding이 파싱 단계에서 필요한가?*/
-char Abnf::DecodePctEncoded(std::string& s, const size_t pos) {
+bool Abnf::IsPctEncoded(std::string& s, const size_t pos) {
   if (pos + 2 >= s.length() || !std::isxdigit(s[pos + 1]) ||
       !std::isxdigit(s[pos + 2])) {
-    return -1;
-  } else {
-    char c = strtol(s.substr(pos + 1, pos + 3).c_str(), NULL, 16);
-    s.replace(pos, pos + 2, std::string(1, c));
-    return c;
+    return false;
   }
+  return true;
 }
