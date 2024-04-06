@@ -6,7 +6,7 @@
 #include "configuration_parser.hpp"
 #include "core.hpp"
 #include "file_reader.hpp"
-#include "multiplexing.hpp"
+#include "multiplexer.hpp"
 #include "socket.hpp"
 
 int parseConfig(const char* fileName, Configuration& configuration);
@@ -23,7 +23,10 @@ int main(const int argc, const char* argv[]) {
     return ERROR;
   }
 
-  return Multiplexing(configuration);
+  Multiplexer multiplexer;
+
+  multiplexer.Init(configuration);
+  return multiplexer.Multiplexing();
 }
 
 int parseConfig(const char* fileName, Configuration& configuration) {
