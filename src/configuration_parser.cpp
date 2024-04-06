@@ -481,7 +481,7 @@ int ConfigurationParser::parseUpload_store(std::string& upload_store,
 }
 
 bool ConfigurationParser::isHost(const std::string& host) {
-  const std::vector<const std::string> tmp = split(host, ".");
+  const std::vector<const std::string> tmp = Split(host, ".");
 
   if (tmp.size() != 4) return false;
 
