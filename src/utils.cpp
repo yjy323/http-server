@@ -5,6 +5,7 @@ void ToCaseInsensitve(std::string& str) {
     str[i] = std::tolower(str[i]);
   }
 }
+
 std::string Trim(const std::string s) {
   size_t front = 0;
   size_t back = s.npos;
@@ -86,4 +87,20 @@ const std::vector<const std::string> Split(const std::string& str,
     res.push_back(str.substr(idxStart, str.length() - idxStart));
 
   return res;
+}
+
+void *Memset(void *b, int c, const size_t len) {
+  unsigned char *bb;
+  unsigned char cc;
+  size_t i;
+
+  bb = (unsigned char *)b;
+  cc = (unsigned char)c;
+  i = 0;
+
+  for (i = 0; i < len; i++) {
+    bb[i] = cc;
+  }
+
+  return ((void *)b);
 }

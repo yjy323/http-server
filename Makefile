@@ -10,8 +10,11 @@ OBJ_DIR = obj
 
 SRCS = $(addprefix src/, main.cpp \
 												configuration_parser.cpp \
+												multiplexer.cpp \
 												file_reader.cpp \
 												configuration.cpp \
+												socket.cpp \
+												client.cpp \
 												utils.cpp)
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 

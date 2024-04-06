@@ -1,19 +1,18 @@
 #include <iostream>
+#include <set>
+#include <vector>
 
 #include "configuration.hpp"
 #include "configuration_parser.hpp"
 #include "core.hpp"
 #include "file_reader.hpp"
+#include "multiplexer.hpp"
+#include "socket.hpp"
 
 int parseConfig(const char* fileName, Configuration& configuration);
 
 int main(const int argc, const char* argv[]) {
   Configuration configuration;
-  int i = 0;
-  int j = 0;
-
-  int cnt = i + j;
-  (void)cnt;
 
   if (argc == 1) {
     if (parseConfig("conf/default.conf", configuration) == ERROR) return ERROR;
@@ -24,12 +23,10 @@ int main(const int argc, const char* argv[]) {
     return ERROR;
   }
 
-  for (Configuration::const_iterator it = configuration.begin();
-       it != configuration.end(); it++) {
-    std::cout << *it << std::endl;
-  }
+  Multiplexer multiplexer;
 
-  return OK;
+  multiplexer.Init(configuration);
+  return multiplexer.Multiplexing();
 }
 
 int parseConfig(const char* fileName, Configuration& configuration) {
