@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-std::string ToRfc850TimeFormat(const std::time_t& time);
+std::string MakeRfc850Time(const std::time_t& time);
 std::string ToCaseInsensitive(std::string str);
 
 std::string Trim(std::string s);

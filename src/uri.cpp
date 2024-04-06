@@ -234,7 +234,7 @@ int Uri::ParseUriComponent(std::string& request_uri) {
                 absolute-path = 1*( "/" segment )
    */
 
-  typedef std::vector<std::string>::iterator pc_iterator;
+  typedef std::vector<std::string>::iterator PcIterator;
 
   // todo - request_uri 존재 여부는 상위 레벨에서 처리되어야 할 것 같다.
   if (request_uri.length() == 0) {
@@ -262,7 +262,7 @@ int Uri::ParseUriComponent(std::string& request_uri) {
   }
 
   std::vector<std::string> path_component = Split(request_uri, '/');
-  for (pc_iterator pit = path_component.begin(); pit != path_component.end();
+  for (PcIterator pit = path_component.begin(); pit != path_component.end();
        ++pit) {
     if (ParsePathSegment(*pit) == ERROR) {
       return ERROR;
@@ -280,10 +280,10 @@ int Uri::ReconstructTargetUri(std::string& request_host) {
     this->scheme_ = "http";
     this->host_ = request_host;
   }
-  typedef std::list<Uri::PathSegment>::iterator ps_iterator;
+  typedef std::list<Uri::PathSegment>::iterator PsIterator;
 
   // this->request_target_ = docroot;
-  for (ps_iterator it = this->path_segments_.begin();
+  for (PsIterator it = this->path_segments_.begin();
        it != this->path_segments_.end(); ++it) {
     this->request_target_ += "/" + (*it).path;
   }

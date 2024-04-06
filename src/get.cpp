@@ -39,8 +39,8 @@ void Get::GetStaticFile(std::string& resource) {
   status_line += "Server: Webserv\r\n";
   status_line += "Content-Length: " + std::to_string(content.length()) + "\r\n";
   status_line += "Content-Type: text/html\r\n";
-  status_line += "Date: " + ToRfc850TimeFormat(datetime) + "\r\n";
-  status_line += "Last-Modified: " + ToRfc850TimeFormat(modified_time) + "\r\n";
+  status_line += "Date: " + MakeRfc850Time(datetime) + "\r\n";
+  status_line += "Last-Modified: " + MakeRfc850Time(modified_time) + "\r\n";
   status_line += "\r\n" + read_file(resource);
 
   std::cout << status_line;

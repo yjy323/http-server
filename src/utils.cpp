@@ -3,7 +3,7 @@
 #include <ctime>
 #include <iomanip>
 
-std::string ToRfc850TimeFormat(const std::time_t& time) {
+std::string MakeRfc850Time(const std::time_t& time) {
   std::ostringstream oss;
   std::tm* tm = std::gmtime(&time);  // UTC 시간으로 변환
 
