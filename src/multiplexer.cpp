@@ -75,7 +75,6 @@ int Multiplexer::Multiplexing() {
 
 int Multiplexer::StartServer() {
   struct kevent events[KEVENT_SIZE];
-  std::vector<int> client_fds;
 
   while (1) {
     // event 대기
