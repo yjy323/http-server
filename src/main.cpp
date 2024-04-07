@@ -7,7 +7,8 @@
 #include "core.hpp"
 #include "file_reader.hpp"
 #include "multiplexer.hpp"
-#include "socket.hpp"
+
+#define ARG_ERROR_MESSAGE "please check argument"
 
 int parseConfig(const char* fileName, Configuration& configuration);
 
@@ -19,13 +20,13 @@ int main(const int argc, const char* argv[]) {
   } else if (argc == 2) {
     if (parseConfig(argv[1], configuration) == ERROR) return ERROR;
   } else {
-    std::cerr << "Error: argument error" << std::endl;
+    std::cerr << ARG_ERROR_MESSAGE << std::endl;
     return ERROR;
   }
 
   Multiplexer multiplexer;
 
-  multiplexer.Init(configuration);
+  if (multiplexer.Init(configuration) == ERROR) return ERROR;
   return multiplexer.Multiplexing();
 }
 

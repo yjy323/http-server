@@ -12,6 +12,10 @@
 #define KEVENT_SIZE 10
 #define BUFFER_SIZE 2048
 
+#define KQUEUE_ERROR_MASSAGE "kqueue() failed."
+#define RECV_ERROR_MASSAGE "recv() from client failed."
+#define ACCEPT_ERROR_MASSAGE "accept() from client failed."
+
 // for test
 #define TEST_RESPONSE \
   "HTTP/1.1 200 OK\r\nContent-Length: 22\r\n\r\nThis is Test Response."
@@ -26,23 +30,12 @@ int Multiplexer::Init(const Configuration& configuration) {
 
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); it++) {
-    Socket server = Socket(*it);
+    Server server = Server(*it);
 
-    if (server.fd() == -1) {
-      std::cerr << "Error: Fail to create new server socket" << std::endl;
-    }
-
+    if (server.fd() == -1) return ERROR;
     if (IS_REUSABLE) server.SetReusable();
 
-    if (server.Bind() != 0) {
-      std::cerr << "Error: Bind failed [port: " << server.conf().port() << "]"
-                << std::endl;
-
-      return ERROR;
-    } else if (server.Listen(DEFAULT_BACKLOG) != 0) {
-      std::cerr << "Error: Listen failed [port: " << server.conf().port() << "]"
-                << std::endl;
-
+    if (server.Bind() == ERROR || server.Listen(DEFAULT_BACKLOG) == ERROR) {
       return ERROR;
     }
 
@@ -51,7 +44,7 @@ int Multiplexer::Init(const Configuration& configuration) {
   }
 
   if ((this->kq_ = kqueue()) == -1) {
-    std::cerr << "Error: kqueue creation failed" << std::endl;
+    std::cerr << KQUEUE_ERROR_MASSAGE << std::endl;
 
     return ERROR;
   }
@@ -72,7 +65,7 @@ int Multiplexer::Multiplexing() {
     }
   }
 
-  for (std::vector<Socket>::const_iterator it = this->servers_.begin();
+  for (std::vector<Server>::const_iterator it = this->servers_.begin();
        it != this->servers_.end(); it++) {
     this->server_fds_.insert(it->fd());
   }
@@ -88,7 +81,7 @@ int Multiplexer::StartServer() {
     // event 대기
     int nev = kevent(this->kq_, NULL, 0, events, KEVENT_SIZE, NULL);
     if (nev == -1) {
-      std::cerr << "kevent error" << std::endl;
+      std::cerr << KQUEUE_ERROR_MASSAGE << std::endl;
       return ERROR;
     }
 
@@ -110,7 +103,7 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
           std::cout << "Client " << events[i].ident << " disconnected "
                     << std::endl;
         } else {
-          std::cerr << "Error reading from client" << std::endl;
+          std::cerr << RECV_ERROR_MASSAGE << std::endl;
         }
 
         // Close client socket and remove it from the vector
@@ -139,7 +132,7 @@ int Multiplexer::AcceptWithClient(int server_fd) {
   int client_fd =
       accept(server_fd, (struct sockaddr*)&client_addr, &client_addr_len);
   if (client_fd == -1) {
-    std::cerr << "Accept failed" << std::endl;
+    std::cerr << ACCEPT_ERROR_MASSAGE << std::endl;
     return ERROR;
   }
 

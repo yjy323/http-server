@@ -1,18 +1,18 @@
-#ifndef SOCKET_HPP
-#define SOCKET_HPP
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
 #include <netinet/in.h>  // for `struct sockaddr_in`
 
 #include "configuration.hpp"
 
-class Socket {
+class Server {
  public:
-  Socket(const ServerConfiguration& conf);
-  Socket(const Socket& ref);
+  Server(const ServerConfiguration& conf);
+  Server(const Server& ref);
 
-  virtual ~Socket();
+  virtual ~Server();
 
-  Socket& operator=(const Socket& ref);
+  Server& operator=(const Server& ref);
 
   int Bind();
   int Listen(int backlog);
@@ -21,15 +21,17 @@ class Socket {
 
   ServerConfiguration conf() const;
   int fd() const;
+  int port() const;
   struct sockaddr_in addr() const;
 
  private:
-  Socket();
+  Server();
 
-  struct sockaddr_in AddrOfConf(const ServerConfiguration& conf);
+  struct sockaddr_in AddrOfConf();
 
   ServerConfiguration conf_;
   int fd_;
+  int port_;
   struct sockaddr_in addr_;
 };
 

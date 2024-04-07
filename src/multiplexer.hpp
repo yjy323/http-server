@@ -7,7 +7,7 @@
 
 #include "client.hpp"
 #include "configuration.hpp"
-#include "socket.hpp"
+#include "server.hpp"
 
 class Multiplexer {
  public:
@@ -26,7 +26,7 @@ class Multiplexer {
   void HandleEvents(int nev, struct kevent events[]);
   int AcceptWithClient(int server_fd);
 
-  std::vector<Socket> servers_;
+  std::vector<Server> servers_;
   std::map<int, Client> clients_;
   std::set<int> server_fds_;
   int kq_;
