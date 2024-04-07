@@ -295,7 +295,7 @@ int ConfigurationParser::parseServerLine(
     std::string& index) {
   int rtn_parse = OK;
 
-  if (directive == "port") {
+  if (directive == "listen") {
     rtn_parse = parsePort(port, valueTokens);
   } else if (directive == "server_name") {
     rtn_parse = parseServer_names(server_names, valueTokens);
