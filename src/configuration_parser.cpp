@@ -6,7 +6,6 @@
 #include <sstream>
 
 #include "file_reader.hpp"
-#include "utils.hpp"
 
 const std::string ConfigurationParser::COMMENT_TOKEN = "#";
 const std::string ConfigurationParser::END_TOKEN = ";";
@@ -133,7 +132,6 @@ int ConfigurationParser::parse(const Tokens& tokens,
 
 int ConfigurationParser::parseServer(const Tokens& tokens,
                                      ServerConfiguration& serverConfiguration) {
-  std::string host;
   int port;
   std::set<const std::string> server_names;
   std::map<const std::string, const ServerConfiguration::LocationConfiguration>
@@ -143,7 +141,6 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
   std::string root;
   bool auto_index;
   std::string index;
-  std::string index_if_dir;
 
   std::map<std::string, Tokens> locationTokenByPath;
   std::string locationPath;
@@ -165,9 +162,9 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
         continue;
       }
       if (directive == "") continue;
-      if (parseServerLine(directive, valueTokens, host, port, server_names,
+      if (parseServerLine(directive, valueTokens, port, server_names,
                           error_page, client_max_body_size, root, auto_index,
-                          index, index_if_dir) == ERROR)
+                          index) == ERROR)
         return ERROR;
       valueTokens.clear();
       directive = "";
@@ -221,8 +218,8 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
     return ERROR;
 
   ServerConfiguration serverConfigurationForLocation(
-      host, port, server_names, location, error_page, client_max_body_size,
-      root, auto_index, index, index_if_dir);
+      port, server_names, location, error_page, client_max_body_size, root,
+      auto_index, index);
 
   for (std::map<std::string, Tokens>::const_iterator iter =
            locationTokenByPath.begin();
@@ -235,9 +232,9 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
     location.insert(std::make_pair(iter->first, locationConfiguration));
   }
 
-  serverConfiguration = ServerConfiguration(
-      host, port, server_names, location, error_page, client_max_body_size,
-      root, auto_index, index, index_if_dir);
+  serverConfiguration =
+      ServerConfiguration(port, server_names, location, error_page,
+                          client_max_body_size, root, auto_index, index);
 
   return OK;
 }
@@ -251,7 +248,6 @@ int ConfigurationParser::parseLocation(
   std::string root = serverConfiguration.root();
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
-  std::string index_if_dir = serverConfiguration.index_if_dir();
   std::set<const std::string> allowed_method;
   std::string return_uri;
   std::string upload_store;
@@ -265,8 +261,7 @@ int ConfigurationParser::parseLocation(
     if (token == END_TOKEN) {
       if (parseLocationLine(directive, valueTokens, error_page,
                             client_max_body_size, root, auto_index, index,
-                            index_if_dir, allowed_method, return_uri,
-                            upload_store) == ERROR)
+                            allowed_method, return_uri, upload_store) == ERROR)
         return ERROR;
       directive = "";
       valueTokens.clear();
@@ -286,23 +281,21 @@ int ConfigurationParser::parseLocation(
   if (directive != "") return ERROR;
 
   locationConfiguartion = ServerConfiguration::LocationConfiguration(
-      error_page, client_max_body_size, root, auto_index, index, index_if_dir,
-      allowed_method, return_uri, upload_store);
+      error_page, client_max_body_size, root, auto_index, index, allowed_method,
+      return_uri, upload_store);
 
   return OK;
 }
 
 int ConfigurationParser::parseServerLine(
-    const Token& directive, const Tokens& valueTokens, std::string& host,
-    int& port, std::set<const std::string>& server_names,
+    const Token& directive, const Tokens& valueTokens, int& port,
+    std::set<const std::string>& server_names,
     std::map<const int, const std::string>& error_page,
     std::string& client_max_body_size, std::string& root, bool& auto_index,
-    std::string& index, std::string& index_if_dir) {
+    std::string& index) {
   int rtn_parse = OK;
 
-  if (directive == "host") {
-    rtn_parse = parseHost(host, valueTokens);
-  } else if (directive == "port") {
+  if (directive == "port") {
     rtn_parse = parsePort(port, valueTokens);
   } else if (directive == "server_name") {
     rtn_parse = parseServer_names(server_names, valueTokens);
@@ -316,8 +309,6 @@ int ConfigurationParser::parseServerLine(
     rtn_parse = parseAuto_index(auto_index, valueTokens);
   } else if (directive == "index") {
     rtn_parse = parseIndex(index, valueTokens);
-  } else if (directive == "index_if_dir") {
-    rtn_parse = parseIndex_if_dir(index_if_dir, valueTokens);
   } else {
     return ERROR;
   }
@@ -329,9 +320,8 @@ int ConfigurationParser::parseLocationLine(
     const Token& directive, const Tokens& valueTokens,
     std::map<const int, const std::string>& error_page,
     std::string& client_max_body_size, std::string& root, bool& auto_index,
-    std::string& index, std::string& index_if_dir,
-    std::set<const std::string>& allowed_method, std::string& return_uri,
-    std::string& upload_store) {
+    std::string& index, std::set<const std::string>& allowed_method,
+    std::string& return_uri, std::string& upload_store) {
   int rtn_parse = OK;
 
   if (directive == "error_page") {
@@ -344,8 +334,6 @@ int ConfigurationParser::parseLocationLine(
     rtn_parse = parseAuto_index(auto_index, valueTokens);
   } else if (directive == "index") {
     rtn_parse = parseIndex(index, valueTokens);
-  } else if (directive == "index_if_dir") {
-    rtn_parse = parseIndex(index_if_dir, valueTokens);
   } else if (directive == "allowed_method") {
     rtn_parse = parseAllowed_method(allowed_method, valueTokens);
   } else if (directive == "return") {
@@ -357,16 +345,6 @@ int ConfigurationParser::parseLocationLine(
   }
 
   return rtn_parse;
-}
-
-int ConfigurationParser::parseHost(std::string& host,
-                                   const Tokens& valueTokens) {
-  if (valueTokens.size() != 1) return ERROR;
-  if (!isHost(valueTokens[0])) return ERROR;
-
-  host = valueTokens[0];
-
-  return OK;
 }
 
 int ConfigurationParser::parsePort(int& port, const Tokens& valueTokens) {
@@ -442,15 +420,6 @@ int ConfigurationParser::parseIndex(std::string& index,
   return OK;
 }
 
-int ConfigurationParser::parseIndex_if_dir(std::string& index_if_dir,
-                                           const Tokens& valueTokens) {
-  if (valueTokens.size() != 1) return ERROR;
-
-  index_if_dir = valueTokens[0];
-
-  return OK;
-}
-
 int ConfigurationParser::parseAllowed_method(
     std::set<const std::string>& allowed_method, const Tokens& valueTokens) {
   if (valueTokens.size() < 1) return ERROR;
@@ -478,28 +447,6 @@ int ConfigurationParser::parseUpload_store(std::string& upload_store,
   upload_store = valueTokens[0];
 
   return OK;
-}
-
-bool ConfigurationParser::isHost(const std::string& host) {
-  const std::vector<const std::string> tmp = Split(host, ".");
-
-  if (tmp.size() != 4) return false;
-
-  for (std::vector<const std::string>::const_iterator it = tmp.begin();
-       it != tmp.end(); it++) {
-    std::string octec = *it;
-    int num = 0;
-
-    for (size_t idx = 0; idx < octec.length(); idx++) {
-      if (!std::isdigit(octec[idx])) return false;
-
-      num = num * 10 + (octec[idx] - '0');
-    }
-
-    if (octec.length() > 5 || num > 255) return false;
-  }
-
-  return true;
 }
 
 bool ConfigurationParser::isPort(const std::string& port) {
