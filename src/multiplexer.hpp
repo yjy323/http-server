@@ -2,7 +2,6 @@
 #define MULTIPLEXER_HPP
 
 #include <map>
-#include <set>
 #include <vector>
 
 #include "client.hpp"
@@ -27,6 +26,7 @@ class Multiplexer {
   int StartServer();
   void HandleEvents(int nev, struct kevent events[]);
   int AcceptWithClient(int server_fd);
+  bool IsExistServerFd(int fd);
   bool IsExistPort(int port);
   void AddConfInServers(const ServerConfiguration& server_conf);
 
@@ -34,7 +34,6 @@ class Multiplexer {
 
   std::vector<Server> servers_;
   std::map<int, Client> clients_;
-  std::set<int> server_fds_;
   int kq_;
 };
 

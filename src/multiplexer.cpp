@@ -20,13 +20,12 @@
 #define TEST_RESPONSE \
   "HTTP/1.1 200 OK\r\nContent-Length: 22\r\n\r\nThis is Test Response."
 
-Multiplexer::Multiplexer() : servers_(), server_fds_(), kq_() {}
+Multiplexer::Multiplexer() : servers_(), kq_() {}
 
 Multiplexer::~Multiplexer() {}
 
 int Multiplexer::Init(const Configuration& configuration) {
   this->servers_.clear();
-  this->server_fds_.clear();
 
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); it++) {
@@ -38,8 +37,6 @@ int Multiplexer::Init(const Configuration& configuration) {
     if (it->Open() == ERROR || (IS_REUSABLE && it->SetReusable() == ERROR) ||
         it->Bind() == ERROR || it->Listen(DEFAULT_BACKLOG) == ERROR)
       return ERROR;
-
-    this->server_fds_.insert(it->fd());
   }
 
   if ((this->kq_ = kqueue()) == -1) {
@@ -53,20 +50,15 @@ int Multiplexer::Init(const Configuration& configuration) {
 
 int Multiplexer::Multiplexing() {
   // read event 추가
-  for (std::set<int>::const_iterator it = this->server_fds_.begin();
-       it != this->server_fds_.end(); it++) {
-    int fd = *it;
+  for (std::vector<Server>::const_iterator it = this->servers_.begin();
+       it != this->servers_.end(); it++) {
+    int fd = it->fd();
 
     struct kevent event;
     EV_SET(&event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
     if (kevent(this->kq_, &event, 1, NULL, 0, NULL) == ERROR) {
       return ERROR;
     }
-  }
-
-  for (std::vector<Server>::const_iterator it = this->servers_.begin();
-       it != this->servers_.end(); it++) {
-    this->server_fds_.insert(it->fd());
   }
 
   return StartServer();
@@ -90,7 +82,7 @@ int Multiplexer::StartServer() {
 void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
   for (int i = 0; i < nev; ++i) {
     // 연결 요청일 경우
-    if (this->server_fds_.find(events[i].ident) != this->server_fds_.end()) {
+    if (IsExistServerFd(events[i].ident)) {
       AcceptWithClient(events[i].ident);
     } else {  // 데이터 송신일 경우
       // client socket 내용 read
@@ -118,12 +110,25 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
                 기본 기능 구현 시작
         */
         Request request;
+        // 대체할 코드 start
         Server sk = *(this->servers_.begin());
         ServerConfiguration sc = sk.conf()[0];
+
         std::cout << " [Request] " << std::endl;
         ssize_t offset = 0;
         request.ParseRequestHeader(buffer, bytes_read, offset);
         request.uri_.ReconstructTargetUri(request.http_host_);
+        // 대체할 코드 end
+
+        // 대체 코드 start
+
+        /* [대체 내용]
+         ** this->servers_안에 client와 연결된 server와 parsing
+         ** 그 후 그 서버 안에 맞는 host로 연결
+         */
+
+        // 대체 코드 end
+
         std::cout << buffer << std::endl;
 
         Response response(request, sc);
@@ -174,6 +179,15 @@ void Multiplexer::AddConfInServers(const ServerConfiguration& server_conf) {
 
     this->servers_.push_back(server);
   }
+}
+
+bool Multiplexer::IsExistServerFd(int fd) {
+  for (std::vector<Server>::const_iterator it = this->servers_.begin();
+       it != this->servers_.end(); it++) {
+    if (it->fd() == fd) return true;
+  }
+
+  return false;
 }
 
 bool Multiplexer::IsExistPort(int port) {
