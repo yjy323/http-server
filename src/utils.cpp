@@ -1,9 +1,37 @@
 #include "utils.hpp"
 
-void ToCaseInsensitve(std::string& str) {
-  for (size_t i = 0; i < str.length(); ++i) {
-    str[i] = std::tolower(str[i]);
+#include <ctime>
+#include <iomanip>
+
+std::string MakeRfc850Time(const std::time_t& time) {
+  std::ostringstream oss;
+  std::tm* tm = std::gmtime(&time);  // UTC 시간으로 변환
+
+  if (tm) {
+    // Weekday, Day-Month-Year Hour:Minute:Second GMT 형식으로 변환
+    const char* weekday_names[] = {"Sun", "Mon", "Tue", "Wed",
+                                   "Thu", "Fri", "Sat"};
+    const char* month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+
+    oss << weekday_names[tm->tm_wday] << ", ";
+    oss << std::setw(2) << std::setfill('0') << tm->tm_mday << "-";
+    oss << month_names[tm->tm_mon] << "-";
+    oss << std::setw(4) << tm->tm_year + 1900 << " ";
+    oss << std::setw(2) << std::setfill('0') << tm->tm_hour << ":";
+    oss << std::setw(2) << std::setfill('0') << tm->tm_min << ":";
+    oss << std::setw(2) << std::setfill('0') << tm->tm_sec << " GMT";
   }
+
+  return oss.str();
+}
+
+std::string ToCaseInsensitive(std::string str) {
+  std::string insensitive_str = std::string(str);
+  for (size_t i = 0; i < insensitive_str.length(); ++i) {
+    insensitive_str[i] = std::tolower(insensitive_str[i]);
+  }
+  return insensitive_str;
 }
 
 std::string Trim(const std::string s) {
