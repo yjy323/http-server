@@ -13,6 +13,7 @@
 #define BUFFER_SIZE 2048
 
 #define KQUEUE_ERROR_MASSAGE "kqueue() failed."
+#define KEVENT_ERROR_MASSAGE "kevent() failed."
 #define RECV_ERROR_MASSAGE "recv() from client failed."
 #define ACCEPT_ERROR_MASSAGE "accept() from client failed."
 
@@ -54,11 +55,8 @@ int Multiplexer::Multiplexing() {
        it != this->servers_.end(); it++) {
     int fd = it->fd();
 
-    struct kevent event;
-    EV_SET(&event, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-    if (kevent(this->kq_, &event, 1, NULL, 0, NULL) == ERROR) {
+    if (RegistKevent(fd, EVFILT_READ, EV_ADD, 0, 0, NULL) == ERROR)
       return ERROR;
-    }
   }
 
   return StartServer();
@@ -71,7 +69,7 @@ int Multiplexer::StartServer() {
     // event 대기
     int nev = kevent(this->kq_, NULL, 0, events, KEVENT_SIZE, NULL);
     if (nev == -1) {
-      std::cerr << KQUEUE_ERROR_MASSAGE << std::endl;
+      std::cerr << KEVENT_ERROR_MASSAGE << std::endl;
       return ERROR;
     }
 
@@ -101,9 +99,7 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
         this->clients_.erase(events[i].ident);
 
         // Unregister client socket from kqueue
-        struct kevent event;
-        EV_SET(&event, events[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-        kevent(this->kq_, &event, 1, NULL, 0, NULL);
+        RegistKevent(events[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
       } else {
         buffer[bytes_read] = 0;
         /*
@@ -159,11 +155,20 @@ int Multiplexer::AcceptWithClient(int server_fd) {
   this->clients_[client_fd] = Client(client_fd);
 
   // kqueue에 client socket 등록
+  if (RegistKevent(client_fd, EVFILT_READ, EV_ADD, 0, 0, NULL) == ERROR)
+    return ERROR;
+
+  return OK;
+}
+
+int Multiplexer::RegistKevent(int ident, int16_t filter, uint64_t flags,
+                              uint32_t fflags, int64_t data, uint64_t* udata) {
   struct kevent event;
-  EV_SET(&event, client_fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+
+  EV_SET(&event, ident, filter, flags, fflags, data, udata);
   if (kevent(this->kq_, &event, 1, NULL, 0, NULL) == -1) {
-    std::cerr << "Failed to register client socket with kqueue" << std::endl;
-    close(client_fd);
+    std::cerr << KEVENT_ERROR_MASSAGE << std::endl;
+
     return ERROR;
   }
 

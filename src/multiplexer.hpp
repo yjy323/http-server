@@ -26,6 +26,8 @@ class Multiplexer {
   int StartServer();
   void HandleEvents(int nev, struct kevent events[]);
   int AcceptWithClient(int server_fd);
+  int RegistKevent(int ident, int16_t filter, uint64_t flags, uint32_t fflags,
+                   int64_t data, uint64_t* udata);
   bool IsExistServerFd(int fd);
   bool IsExistPort(int port);
   void AddConfInServers(const ServerConfiguration& server_conf);
