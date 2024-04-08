@@ -30,17 +30,16 @@ int Multiplexer::Init(const Configuration& configuration) {
 
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); it++) {
-    Server server = Server(*it);
+    AddConfInServers(*it);
+  }
 
-    if (server.fd() == -1) return ERROR;
-    if (IS_REUSABLE) server.SetReusable();
-
-    if (server.Bind() == ERROR || server.Listen(DEFAULT_BACKLOG) == ERROR) {
+  for (std::vector<Server>::iterator it = this->servers_.begin();
+       it != this->servers_.end(); it++) {
+    if (it->Open() == ERROR || (IS_REUSABLE && it->SetReusable() == ERROR) ||
+        it->Bind() == ERROR || it->Listen(DEFAULT_BACKLOG) == ERROR)
       return ERROR;
-    }
 
-    this->servers_.push_back(server);
-    this->server_fds_.insert(server.fd());
+    this->server_fds_.insert(it->fd());
   }
 
   if ((this->kq_ = kqueue()) == -1) {
@@ -148,4 +147,35 @@ int Multiplexer::AcceptWithClient(int server_fd) {
   }
 
   return OK;
+}
+
+void Multiplexer::AddConfInServers(const ServerConfiguration& server_conf) {
+  if (IsExistPort(server_conf.port())) {
+    ServerInstanceByPort(server_conf.port()).AddConf(server_conf);
+  } else {
+    Server server = Server();
+    server.AddConf(server_conf);
+
+    this->servers_.push_back(server);
+  }
+}
+
+bool Multiplexer::IsExistPort(int port) {
+  for (std::vector<Server>::const_iterator it = this->servers_.begin();
+       it != this->servers_.end(); it++) {
+    if (it->port() == port) return true;
+  }
+
+  return false;
+}
+
+Server& Multiplexer::ServerInstanceByPort(int port) {
+  for (std::vector<Server>::iterator it = this->servers_.begin();
+       it != this->servers_.end(); it++) {
+    if (it->port() == port) {
+      return *it;
+    }
+  }
+
+  return *this->servers_.end();
 }

@@ -5,18 +5,12 @@
 #include "core.hpp"
 #include "utils.hpp"
 
-#define NEW_SOCKET_FAIL_MESSGAE std::string("socket() failed.")
+#define NEW_SOCKET_FAIL_MESSAGE std::string("socket() failed.")
 #define BIND_FAIL_MASSAGE std::string("bind() to 0.0.0.0:`port` failed.")
 #define LISTEN_FAIL_MASSAGE std::string("listen() to 0.0.0.0:`port` failed.")
 #define SETSOCKOPT_FAIL_MASSAGE std::string("setsockopt() failed.")
 
-Server::Server(const ServerConfiguration& conf)
-    : conf_(conf),
-      fd_(socket(AF_INET, SOCK_STREAM, 0)),
-      port_(conf.port()),
-      addr_(AddrOfConf()) {
-  if (this->fd_ == -1) std::cerr << NEW_SOCKET_FAIL_MESSGAE << std::endl;
-}
+Server::Server() {}
 
 Server::Server(const Server& ref)
     : conf_(ref.conf()), fd_(ref.fd()), port_(ref.port()), addr_(ref.addr()) {}
@@ -34,6 +28,25 @@ Server& Server::operator=(const Server& ref) {
 }
 
 /* method */
+
+void Server::AddConf(const ServerConfiguration& conf) {
+  this->conf_.push_back(conf);
+
+  if (this->conf_.size() == 1) {
+    this->port_ = this->conf_[0].port();
+    InitAddr();
+  }
+}
+
+int Server::Open() {
+  if ((this->fd_ = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+    std::cerr << NEW_SOCKET_FAIL_MESSAGE << std::endl;
+
+    return ERROR;
+  }
+
+  return OK;
+}
 
 int Server::Bind() {
   int sockfd = this->fd_;
@@ -87,21 +100,29 @@ int Server::SetReusable() {
   return OK;
 }
 
-struct sockaddr_in Server::AddrOfConf() {
-  struct sockaddr_in addr;
+// struct sockaddr_in Server::AddrOfConf() {
+//   struct sockaddr_in addr;
 
-  Memset(&addr, 0, sizeof(addr));
+//   Memset(&addr, 0, sizeof(addr));
 
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = INADDR_ANY;
-  addr.sin_port = htons(this->port_);
+//   addr.sin_family = AF_INET;
+//   addr.sin_addr.s_addr = INADDR_ANY;
+//   addr.sin_port = htons(this->port_);
 
-  return addr;
+//   return addr;
+// }
+
+void Server::InitAddr() {
+  Memset(&(this->addr_), 0, sizeof(this->addr_));
+
+  this->addr_.sin_family = AF_INET;
+  this->addr_.sin_addr.s_addr = INADDR_ANY;
+  this->addr_.sin_port = htons(this->port_);
 }
 
 /* getter */
 
-ServerConfiguration Server::conf() const { return this->conf_; }
+std::vector<ServerConfiguration> Server::conf() const { return this->conf_; }
 
 int Server::fd() const { return this->fd_; }
 

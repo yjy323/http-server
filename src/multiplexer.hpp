@@ -25,6 +25,10 @@ class Multiplexer {
   int StartServer();
   void HandleEvents(int nev, struct kevent events[]);
   int AcceptWithClient(int server_fd);
+  bool IsExistPort(int port);
+  void AddConfInServers(const ServerConfiguration& server_conf);
+
+  Server& ServerInstanceByPort(int port);
 
   std::vector<Server> servers_;
   std::map<int, Client> clients_;
