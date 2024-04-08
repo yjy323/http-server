@@ -10,6 +10,11 @@ Request& Request::operator=(const Request& obj) {
     this->major_version_ = obj.major_version_;
     this->minor_version_ = obj.minor_version_;
     this->headers_ = obj.headers_;
+    this->http_host_ = obj.http_host_;
+    this->http_content_length_ = obj.http_content_length_;
+    this->http_transfer_encoding_ = obj.http_transfer_encoding_;
+    this->chunked_encoding_signal_ = obj.chunked_encoding_signal_;
+    this->http_connection_ = obj.http_connection_;
     this->body_ = obj.body_;
   }
   return *this;

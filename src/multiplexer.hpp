@@ -7,6 +7,8 @@
 
 #include "client.hpp"
 #include "configuration.hpp"
+#include "request.hpp"
+#include "response.hpp"
 #include "socket.hpp"
 
 class Multiplexer {

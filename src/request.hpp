@@ -13,7 +13,6 @@
 #include "uri.hpp"
 #include "utils.hpp"
 
-#define BUFFER_SIZE 4096
 #define BODY_SIZE 8000  // Todo: 최대 길이 결정
 
 class Request {
