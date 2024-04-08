@@ -33,6 +33,7 @@ class Multiplexer {
   void AddConfInServers(const ServerConfiguration& server_conf);
 
   Server& ServerInstanceByPort(int port);
+  Client& ClientInstanceByFd(int fd);
 
   std::vector<Server> servers_;
   std::map<int, Client> clients_;

@@ -26,14 +26,14 @@ class Server {
   int Close();
   int SetReusable();
 
+  ServerConfiguration ConfByHost(const std::string& host);
+
   std::vector<ServerConfiguration> conf() const;
   int fd() const;
   int port() const;
   struct sockaddr_in addr() const;
 
  private:
-  struct sockaddr_in AddrOfConf();
-
   std::vector<ServerConfiguration> conf_;
   int fd_;
   int port_;

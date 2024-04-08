@@ -3,16 +3,19 @@
 
 #include <string>
 
+#include "server.hpp"
+
 class Client {
  public:
   Client();
-  Client(int fd);
+  Client(const Server& server, int fd);
   Client(const Client& ref);
   virtual ~Client();
 
   Client& operator=(const Client& ref);
 
   const int& fd() const;
+  const Server& server() const;
   const std::string& request() const;
   const std::string& response() const;
 
@@ -20,6 +23,7 @@ class Client {
   void set_response(const std::string& response);
 
  private:
+  Server server_;
   int fd_;
   std::string request_;
   std::string response_;

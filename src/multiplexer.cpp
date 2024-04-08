@@ -80,6 +80,7 @@ int Multiplexer::StartServer() {
 void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
   for (int i = 0; i < nev; ++i) {
     // 연결 요청일 경우
+
     if (IsExistServerFd(events[i].ident)) {
       AcceptWithClient(events[i].ident);
     } else {  // 데이터 송신일 경우
@@ -106,23 +107,14 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
                 기본 기능 구현 시작
         */
         Request request;
-        // 대체할 코드 start
-        Server sk = *(this->servers_.begin());
-        ServerConfiguration sc = sk.conf()[0];
+        Server sk = this->clients_[events[i].ident].server();
 
         std::cout << " [Request] " << std::endl;
         ssize_t offset = 0;
         request.ParseRequestHeader(buffer, bytes_read, offset);
         request.uri_.ReconstructTargetUri(request.http_host_);
-        // 대체할 코드 end
 
-        // 대체 코드 start
-
-        /* [대체 내용]
-         ** this->servers_안에 client와 연결된 server와 parsing
-         ** 그 후 그 서버 안에 맞는 host로 연결
-         */
-
+        ServerConfiguration sc = sk.ConfByHost(request.http_host_);
         // 대체 코드 end
 
         std::cout << buffer << std::endl;
@@ -151,13 +143,21 @@ int Multiplexer::AcceptWithClient(int server_fd) {
     return ERROR;
   }
 
+  // server 찾기
+  Server server;
+  for (std::vector<Server>::const_iterator it = this->servers_.begin();
+       it != this->servers_.end(); it++) {
+    if (it->fd() == server_fd) {
+      this->clients_[client_fd] = Client(*it, client_fd);
+      break;
+    }
+  }
+
   // client socket fd 관리 추가
-  this->clients_[client_fd] = Client(client_fd);
 
   // kqueue에 client socket 등록
   if (RegistKevent(client_fd, EVFILT_READ, EV_ADD, 0, 0, NULL) == ERROR)
     return ERROR;
-
   return OK;
 }
 
@@ -213,4 +213,15 @@ Server& Multiplexer::ServerInstanceByPort(int port) {
   }
 
   return *this->servers_.end();
+}
+
+Client& Multiplexer::ClientInstanceByFd(int fd) {
+  for (std::map<int, Client>::iterator it = this->clients_.begin();
+       it != this->clients_.end(); it++) {
+    if (it->second.fd() == fd) {
+      return it->second;
+    }
+  }
+
+  return this->clients_.end()->second;
 }

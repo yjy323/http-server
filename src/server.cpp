@@ -100,17 +100,20 @@ int Server::SetReusable() {
   return OK;
 }
 
-// struct sockaddr_in Server::AddrOfConf() {
-//   struct sockaddr_in addr;
+ServerConfiguration Server::ConfByHost(const std::string& host) {
+  for (std::vector<ServerConfiguration>::iterator it = this->conf_.begin();
+       it != this->conf_.end(); it++) {
+    for (std::set<const std::string>::iterator it_server_host =
+             it->server_names().begin();
+         it_server_host != it->server_names().end(); it_server_host++) {
+      if (*it_server_host == host) {
+        return *it;
+      }
+    }
+  }
 
-//   Memset(&addr, 0, sizeof(addr));
-
-//   addr.sin_family = AF_INET;
-//   addr.sin_addr.s_addr = INADDR_ANY;
-//   addr.sin_port = htons(this->port_);
-
-//   return addr;
-// }
+  return this->conf_[0];
+}
 
 void Server::InitAddr() {
   Memset(&(this->addr_), 0, sizeof(this->addr_));
