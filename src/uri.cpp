@@ -7,20 +7,9 @@
 /*
         uri.cpp에 사용되는 비멤버 함수
 */
-static void InsertKeyValuePair(std::map<const std::string, std::string>& map,
-                               const std::string& key, std::string value);
 
 static int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
                              std::string& uri_component, std::string delimiter);
-
-void InsertKeyValuePair(std::map<const std::string, std::string>& map,
-                        const std::string& key, std::string value) {
-  if (value != "") {
-    map[key] = value;
-  } else {
-    map.insert(std::make_pair(key, value));
-  }
-}
 
 int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
                       std::string& uri_component, std::string delimiter) {
@@ -57,7 +46,7 @@ Uri& Uri::operator=(const Uri& obj) {
     this->host_ = obj.host_;
     this->port_ = obj.port_;
     this->path_segments_ = obj.path_segments_;
-    this->query_ = obj.query_;
+    this->query_string_ = obj.query_string_;
   }
   return *this;
 }
@@ -123,11 +112,6 @@ int Uri::ParsePathSegment(std::string& path_segment) {
         segment = *pchar
         pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
   */
-  PathSegment path_segment_obj;
-  std::string key;
-
-  std::stringstream ss;
-  bool is_before_param = true;
 
   size_t path_segment_length = path_segment.length();
 
@@ -140,38 +124,18 @@ int Uri::ParsePathSegment(std::string& path_segment) {
           return ERROR;
         }
       case ';':
-        if (is_before_param) {
-          path_segment_obj.path = ss.str();
-        } else if (key != "") {
-          InsertKeyValuePair(path_segment_obj.parameter, key, ss.str());
-        }
-        is_before_param = false;
-        key = "";
-        ss.str(std::string());
-        break;
       case '=':
-        key = ss.str();
-        ss.str(std::string());
-        break;
       case ':':
       case '@':
         break;
       default:
         if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
           return ERROR;
-        } else {
-          ss << c;
         }
         break;
     }
   }
-  if (is_before_param) {
-    path_segment_obj.path = ss.str();
-  } else if (key != "") {
-    InsertKeyValuePair(path_segment_obj.parameter, key, ss.str());
-  }
-  this->path_segments_.push_back(path_segment_obj);
-
+  path_segments_.push_back(path_segment);
   return OK;
 }
 
@@ -179,12 +143,9 @@ int Uri::ParseQuery(std::string& query) {
   // query = *( pchar / "/" / "?" )
   // pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
 
-  std::string key;
-
-  std::stringstream ss;
-
   size_t query_length = query.length();
 
+  this->query_string_ = query;
   for (size_t i = 0; i < query_length; ++i) {
     char c = query[i];
     switch (c) {
@@ -193,34 +154,18 @@ int Uri::ParseQuery(std::string& query) {
           return ERROR;
         }
       case '&':
-        if (key != "") {
-          InsertKeyValuePair(query_, key, ss.str());
-        }
-        key = "";
-        ss.str(std::string());
-        break;
       case '=':
-        key = ss.str();
-        ss.str(std::string());
-        break;
       case ':':
       case '@':
       case '/':
       case '?':
-        ss << c;
         break;
       default:
         if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
           return ERROR;
-        } else {
-          ss << c;
         }
         break;
     }
-  }
-
-  if (key != "") {
-    InsertKeyValuePair(query_, key, ss.str());
   }
   return OK;
 }
@@ -282,12 +227,12 @@ int Uri::ReconstructTargetUri(std::string& request_host) {
     this->scheme_ = "http";
     this->host_ = request_host;
   }
-  typedef std::list<Uri::PathSegment>::iterator PsIterator;
+  typedef std::list<std::string>::iterator PsIterator;
 
   // this->request_target_ = docroot;
   for (PsIterator it = this->path_segments_.begin();
        it != this->path_segments_.end(); ++it) {
-    this->request_target_ += "/" + (*it).path;
+    this->request_target_ += "/" + (*it);
   }
   return OK;
 }
