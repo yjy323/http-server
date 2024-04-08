@@ -123,11 +123,27 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
         kevent(this->kq_, &event, 1, NULL, 0, NULL);
       } else {
         buffer[bytes_read] = 0;
-        std::string response = TEST_RESPONSE;
-
+        /*
+                기본 기능 구현 시작
+        */
+        Request request;
+        Socket sk = *(this->servers_.begin());
+        ServerConfiguration sc = sk.conf();
         std::cout << " [Request] " << std::endl;
+        ssize_t offset = 0;
+        request.ParseRequestHeader(buffer, bytes_read, offset);
+        request.uri_.ReconstructTargetUri(request.http_host_);
         std::cout << buffer << std::endl;
-        send(events[i].ident, response.c_str(), response.size(), 0);
+
+        Response response(request, sc);
+        response.HttpTransaction();
+
+        std::cout << response.response_message_ << std::endl;
+        send(events[i].ident, response.response_message_.c_str(),
+             response.response_message_.size(), 0);
+        /*
+                기본 기능 구현 끝
+        */
       }
     }
   }

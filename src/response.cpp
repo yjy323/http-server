@@ -1,5 +1,14 @@
 #include "response.hpp"
 
+Response::Response(Request& request, ServerConfiguration& server_conf)
+    : request_(request), server_conf_(server_conf) {}
+Response::Response(const Response& obj) { (void)obj; }
+Response::~Response() {}
+Response& Response::operator=(const Response& obj) {
+  (void)obj;
+  return *this;
+}
+
 void Response::FindResourceConfiguration() {
   size_t most_specific_pos = 0;
   LocConfIterator begin = this->server_conf_.location().begin();
@@ -13,7 +22,7 @@ void Response::FindResourceConfiguration() {
       break;
     } else if (pos == 0 && most_specific_pos < key.length()) {
       this->loc_conf_ = it->second;
-      most_specific_pos = pos;
+      most_specific_pos = key.length();
     }
   }
 
@@ -30,7 +39,7 @@ void Response::FindResourceConfiguration() {
 
 bool Response::IsAllowedMethod(const char* method) {
   std::set<const std::string> allowed_method = this->loc_conf_.allowed_method();
-  if (allowed_method.find(method + '\0') != allowed_method.end()) {
+  if (allowed_method.find(method) != allowed_method.end()) {
     return true;
   } else {
     return false;
@@ -45,7 +54,7 @@ int Response::HttpTransaction() {
     // redirect URI
   }
   target_resource_ =
-      this->loc_conf_.root() + this->request_.uri_.request_target_;
+      "." + this->loc_conf_.root() + this->request_.uri_.request_target_;
 
   if (target_resource_[target_resource_.length() - 1] == '/') {
     this->target_resource_type_ = kDirectory;
@@ -53,16 +62,18 @@ int Response::HttpTransaction() {
     this->target_resource_type_ = kFile;
   }
 
+  // TODO: 메소드 명 define
   std::string method = this->request_.method_;
-  if (method == "GET" && IsAllowedMethod("GET")) {
+  if (method == "GET\0" && IsAllowedMethod("GET\0")) {
     HttpGetMethod();
-  } else if (method == "POST" && IsAllowedMethod("POST")) {
+  } else if (method == "POST\0" && IsAllowedMethod("POST\0")) {
     HttpPostMethod();
-  } else if (method == "DELETE" && IsAllowedMethod("DELETE")) {
+  } else if (method == "DELETE\0" && IsAllowedMethod("DELETE\0")) {
     HttpDeleteMethod();
   } else {
     return 405;
   }
+  return OK;
 }
 
 std::string ReadFile(const std::string& filename) {
@@ -85,6 +96,10 @@ int Response::HttpGetMethod() {
     // CGI
     std::string extension =
         this->target_resource_.substr(this->target_resource_.rfind('.'));
+    if (extension.length() > 0) {
+      extension = extension.erase(0, 1);
+    }
+
     if (extension == ".py") {
     } else {
       // Server
@@ -106,15 +121,16 @@ int Response::HttpGetMethod() {
       status_line += "Server: Webserv\r\n";
       status_line +=
           "Content-Length: " + std::to_string(content.length()) + "\r\n";
-      status_line += "Content-Type: text/html\r\n";
+      status_line += "Content-Type: text/" + extension + "\r\n";
       status_line += "Date: " + MakeRfc850Time(datetime) + "\r\n";
       status_line += "Last-Modified: " + MakeRfc850Time(modified_time) + "\r\n";
       status_line += "\r\n" + content;
 
-      std::cout << status_line;
+      response_message_ = status_line;
     }
     // 404
   }
+  return OK;
 }
 int Response::HttpPostMethod() {
   if (this->target_resource_type_ == kDirectory) {
@@ -124,8 +140,10 @@ int Response::HttpPostMethod() {
     // CGI
     // 404
   }
+  return OK;
 }
 int Response::HttpDeleteMethod() {
   // DELETE
   // 200 201
+  return OK;
 }

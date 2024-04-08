@@ -17,8 +17,7 @@ class Response {
                    const LocationConfiguration>::const_iterator LocConfIterator;
 
   enum ResourceType { kFile, kDirectory };
-
-  Response();
+  Response(Request&, ServerConfiguration&);
   Response(const Response& obj);
   ~Response();
   Response& operator=(const Response& obj);
@@ -34,10 +33,13 @@ class Response {
 
   Request request_;
   ServerConfiguration server_conf_;
+
   LocationConfiguration loc_conf_;
   std::string request_target_;
   std::string target_resource_;
   ResourceType target_resource_type_;
+
+  std::string response_message_;
 };
 
 #endif

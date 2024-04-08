@@ -51,6 +51,8 @@ Uri::~Uri() {}
 Uri::Uri(const Uri& obj) { *this = obj; }
 Uri& Uri::operator=(const Uri& obj) {
   if (this != &obj) {
+    this->request_target_form_ = obj.request_target_form_;
+    this->request_target_ = obj.request_target_;
     this->scheme_ = obj.scheme_;
     this->host_ = obj.host_;
     this->port_ = obj.port_;

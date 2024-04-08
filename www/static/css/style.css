@@ -40,13 +40,13 @@ label {
 }
 
 input[type="text"] {
-	width: 200px; /* 입력 필드의 너비를 화면 너비 - 120px로 설정 */
+	width: 200px;
 	padding: 10px;
 	margin-right: 10px;
 	margin-bottom: 10px;
 	border: 1px solid #ccc;
 	border-radius: 5px;
-	box-sizing: border-box; /* 입력 필드의 크기를 padding과 border를 포함한 크기로 설정 */
+	box-sizing: border-box;
 }
 
 input[type="submit"] {
