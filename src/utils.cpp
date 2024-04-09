@@ -1,8 +1,5 @@
 #include "utils.hpp"
 
-#include <ctime>
-#include <iomanip>
-
 std::string MakeRfc850Time(const std::time_t& time) {
   std::ostringstream oss;
   std::tm* tm = std::gmtime(&time);  // UTC 시간으로 변환
@@ -117,12 +114,12 @@ const std::vector<const std::string> Split(const std::string& str,
   return res;
 }
 
-void *Memset(void *b, int c, const size_t len) {
-  unsigned char *bb;
+void* Memset(void* b, int c, const size_t len) {
+  unsigned char* bb;
   unsigned char cc;
   size_t i;
 
-  bb = (unsigned char *)b;
+  bb = (unsigned char*)b;
   cc = (unsigned char)c;
   i = 0;
 
@@ -130,5 +127,5 @@ void *Memset(void *b, int c, const size_t len) {
     bb[i] = cc;
   }
 
-  return ((void *)b);
+  return ((void*)b);
 }
