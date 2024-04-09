@@ -33,7 +33,7 @@ void Response::FindResourceConfiguration() {
 
     this->loc_conf_ = LocationConfiguration(
         sc.error_page(), sc.client_max_body_size(), sc.root(), sc.auto_index(),
-        sc.index(), sc.index_if_dir(), default_allowed_method, "", "");
+        sc.index(), default_allowed_method, "", "");
   }
 }
 

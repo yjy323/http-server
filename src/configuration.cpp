@@ -5,8 +5,7 @@
 /** ServerConfiguration::constructor **/
 
 ServerConfiguration::ServerConfiguration()
-    : host_("127.0.0.1"),
-      port_(0),
+    : port_(0),
       server_names_(),
       location_(),
       error_page_(),
@@ -17,23 +16,19 @@ ServerConfiguration::ServerConfiguration()
       index_if_dir_() {}
 
 ServerConfiguration::ServerConfiguration(
-    const std::string& host, const int& port,
-    const std::set<const std::string>& server_names,
+    const int& port, const std::set<const std::string>& server_names,
     const std::map<const std::string, const LocationConfiguration>& location,
     const std::map<const int, const std::string>& error_page,
     const std::string& client_max_body_size, const std::string& root,
-    const bool& auto_index, const std::string& index,
-    const std::string& index_if_dir)
-    : host_(host),
-      port_(port),
+    const bool& auto_index, const std::string& index)
+    : port_(port),
       server_names_(server_names),
       location_(location),
       error_page_(error_page),
       client_max_body_size_(client_max_body_size),
       root_(root),
       auto_index_(auto_index),
-      index_(index),
-      index_if_dir_(index_if_dir) {}
+      index_(index) {}
 
 ServerConfiguration::ServerConfiguration(const ServerConfiguration& ref) {
   *this = ref;
@@ -48,7 +43,6 @@ ServerConfiguration& ServerConfiguration::operator=(
     const ServerConfiguration& ref) {
   if (this == &ref) return *this;
 
-  this->host_ = ref.host();
   this->port_ = ref.port();
   for (std::set<const std::string>::const_iterator it =
            ref.server_names().begin();
@@ -69,14 +63,11 @@ ServerConfiguration& ServerConfiguration::operator=(
   this->root_ = ref.root();
   this->auto_index_ = ref.auto_index();
   this->index_ = ref.index();
-  this->index_if_dir_ = ref.index_if_dir();
 
   return *this;
 }
 
 /** ServerConfiguration::getter **/
-
-const std::string& ServerConfiguration::host() const { return this->host_; }
 
 const int& ServerConfiguration::port() const { return this->port_; }
 
@@ -105,10 +96,6 @@ const bool& ServerConfiguration::auto_index() const {
   return this->auto_index_;
 }
 
-const std::string& ServerConfiguration::index_if_dir() const {
-  return this->index_if_dir_;
-}
-
 const std::string& ServerConfiguration::index() const { return this->index_; }
 
 /* ServerConfiguration::LocationConfiguration */
@@ -121,7 +108,6 @@ ServerConfiguration::LocationConfiguration::LocationConfiguration()
       root_(),
       auto_index_(false),
       index_("index.html"),
-      index_if_dir_(),
       allowed_method_(),
       return_uri_(),
       upload_store_("upload_store/") {}
@@ -130,7 +116,6 @@ ServerConfiguration::LocationConfiguration::LocationConfiguration(
     const std::map<const int, const std::string>& error_page,
     const std::string& client_max_body_size, const std::string& root,
     const bool& auto_index, const std::string& index,
-    const std::string& index_if_dir,
     const std::set<const std::string>& allowed_method,
     const std::string& return_uri, const std::string& upload_store)
     : error_page_(error_page),
@@ -138,7 +123,6 @@ ServerConfiguration::LocationConfiguration::LocationConfiguration(
       root_(root),
       auto_index_(auto_index),
       index_(index),
-      index_if_dir_(index_if_dir),
       allowed_method_(allowed_method),
       return_uri_(return_uri),
       upload_store_(upload_store) {}
@@ -166,7 +150,6 @@ ServerConfiguration::LocationConfiguration::operator=(
   this->root_ = ref.root();
   this->auto_index_ = ref.auto_index();
   this->index_ = ref.index();
-  this->index_if_dir_ = ref.index_if_dir();
   for (std::set<const std::string>::const_iterator it =
            ref.allowed_method().begin();
        it != ref.allowed_method().end(); it++) {
@@ -202,11 +185,6 @@ const std::string& ServerConfiguration::LocationConfiguration::index() const {
   return this->index_;
 }
 
-const std::string& ServerConfiguration::LocationConfiguration::index_if_dir()
-    const {
-  return this->index_if_dir_;
-}
-
 const std::set<const std::string>&
 ServerConfiguration::LocationConfiguration::allowed_method() const {
   return this->allowed_method_;
@@ -227,8 +205,6 @@ const std::string& ServerConfiguration::LocationConfiguration::upload_store()
 std::ostream& operator<<(std::ostream& out,
                          const ServerConfiguration& serverConfiguration) {
   out << "[Server Configuration]" << std::endl;
-
-  out << "	host: " << serverConfiguration.host() << std::endl;
 
   out << "	port: " << serverConfiguration.port() << std::endl;
 
@@ -255,8 +231,6 @@ std::ostream& operator<<(std::ostream& out,
   out << "	root: " << serverConfiguration.root() << std::endl;
 
   out << "	auto_index: " << serverConfiguration.auto_index() << std::endl;
-
-  out << "	index: " << serverConfiguration.index_if_dir() << std::endl;
 
   out << "	index_if_dir: " << serverConfiguration.index() << std::endl;
 
@@ -303,9 +277,6 @@ std::ostream& operator<<(
 
   out << "			index: " << locationConfiguration.index()
       << std::endl;
-
-  out << "			index_if_dir: "
-      << locationConfiguration.index_if_dir() << std::endl;
 
   out << "			allowed_method: " << std::endl;
   const std::set<const std::string> allowed_method =

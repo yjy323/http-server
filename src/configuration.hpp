@@ -20,7 +20,6 @@ class ServerConfiguration {
 
  private:
   /* variable */
-  std::string host_;
   int port_;
   std::set<const std::string> server_names_;
   std::map<const std::string, const LocationConfiguration> location_;
@@ -35,13 +34,11 @@ class ServerConfiguration {
   /* constructor */
   ServerConfiguration();
   ServerConfiguration(
-      const std::string& host, const int& port,
-      const std::set<const std::string>& server_names,
+      const int& port, const std::set<const std::string>& server_names,
       const std::map<const std::string, const LocationConfiguration>& location,
       const std::map<const int, const std::string>& error_page,
       const std::string& client_max_body_size, const std::string& root,
-      const bool& auto_index, const std::string& index,
-      const std::string& index_if_dir);
+      const bool& auto_index, const std::string& index);
   ServerConfiguration(const ServerConfiguration& ref);
 
   /* destructor */
@@ -51,7 +48,6 @@ class ServerConfiguration {
   ServerConfiguration& operator=(const ServerConfiguration& ref);
 
   /* getter */
-  const std::string& host() const;
   const int& port() const;
   const std::set<const std::string>& server_names() const;
   const std::map<const std::string, const LocationConfiguration>& location()
@@ -60,7 +56,6 @@ class ServerConfiguration {
   const std::string& client_max_body_size() const;
   const std::string& root() const;
   const bool& auto_index() const;
-  const std::string& index_if_dir() const;
   const std::string& index() const;
 
  public:
@@ -73,7 +68,6 @@ class ServerConfiguration {
     std::string root_;
     bool auto_index_;
     std::string index_;
-    std::string index_if_dir_;
     std::set<const std::string> allowed_method_;
     std::string return_uri_;
     std::string upload_store_;
@@ -85,7 +79,6 @@ class ServerConfiguration {
         const std::map<const int, const std::string>& error_page,
         const std::string& client_max_body_size, const std::string& root,
         const bool& auto_index, const std::string& index,
-        const std::string& index_if_dir,
         const std::set<const std::string>& allowed_method,
         const std::string& return_uri, const std::string& upload_store);
     LocationConfiguration(const LocationConfiguration& ref);
@@ -102,7 +95,6 @@ class ServerConfiguration {
     const std::string& root() const;
     const bool& auto_index() const;
     const std::string& index() const;
-    const std::string& index_if_dir() const;
     const std::set<const std::string>& allowed_method() const;
     const std::string& return_uri() const;
     const std::string& upload_store() const;
