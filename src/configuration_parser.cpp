@@ -1,10 +1,5 @@
 #include "configuration_parser.hpp"
 
-#include <fcntl.h>
-
-#include <fstream>
-#include <sstream>
-
 #include "file_reader.hpp"
 
 #define DEFAULT_PORT 8080
@@ -19,6 +14,8 @@
 #define DEFAULT_ALLOWED_METHOD ConfigurationParser::getDefaultAllowedMethod()
 #define DEFAULT_RETURN_URI ""
 #define DEFAULT_UPLOAD_STORE "/upload"
+
+#define PARSE_ERROR_MESSAGE "an not parse the configuration file"
 
 const std::string ConfigurationParser::COMMENT_TOKEN = "#";
 const std::string ConfigurationParser::END_TOKEN = ";";
@@ -35,6 +32,8 @@ int ConfigurationParser::Parse(const std::string& contents,
   if (EraseComment(contents_copy) == ERROR ||
       Tokenize(contents_copy, tokens) == ERROR ||
       Parse(tokens, configuration) == ERROR) {
+    std::cerr << PARSE_ERROR_MESSAGE << std::endl;
+
     return ERROR;
   }
 
