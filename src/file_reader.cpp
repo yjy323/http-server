@@ -4,7 +4,7 @@
 
 FileReader::~FileReader() {}
 
-int FileReader::readFile(const std::string& filePath, std::string& contents) {
+int FileReader::ReadFile(const std::string& filePath, std::string& contents) {
   std::ifstream fileStream(filePath.c_str());
   std::ostringstream buffer;
 
