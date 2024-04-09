@@ -1,20 +1,18 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
 import os
 import sys
 import cgi
 
 # Set the content type to HTML
-print("Content-type:text/html\r\n\r\n")
+print("Content-type:text/html", end="\r\n")
 
-# Get user's name from form input
-form = cgi.FieldStorage()
 
-# Check if the request method is POST
-if os.environ['REQUEST_METHOD'] == 'POST':
+#Check if the request method is POST
+if os.environ.get("REQUEST_METHOD") == 'POST':
     # Read POST data to get user's name
     try:
-        post_data = sys.stdin.read(int(os.environ['CONTENT_LENGTH']))
+        post_data = sys.stdin.read(int(os.environ.get("CONTENT_LENGTH")))
         post_params = post_data.split('&')
         for param in post_params:
             key, value = param.split('=')
@@ -25,16 +23,17 @@ if os.environ['REQUEST_METHOD'] == 'POST':
         # If there's an error in reading POST data, set username to "Guest"
         username = "Guest"
 else:
-    # Check if username exists in the query string
-    if 'username' in form:
-        username = form.getvalue('username')
-    else:
-        # If username is not provided, set it to "Guest"
-        username = "Guest"
+		# Get user's name from form input
+		form = cgi.FieldStorage()
+		# Check if username exists in the query string
+		if 'username' in form:
+				username = form.getvalue('username')
+		else:
+				# If username is not provided, set it to "Guest"
+				username = "Guest"
 
 # HTML template for the response
-html_template = """
-<!DOCTYPE html>
+html_template = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -47,8 +46,11 @@ html_template = """
     <p>You can modify this file to serve any content you want.</p>
     <p>If you have any questions or need further assistance, feel free to contact me.</p>
 </body>
-</html>
-"""
+</html>"""
+
+content_len = len(html_template)
+print("Content-Length: {}".format(content_len), end="\r\n")
+print("", end="\r\n")
 
 # Print the HTML response with the username dynamically inserted
-print(html_template % username)
+print(html_template % username, end="\r\n")
