@@ -28,7 +28,6 @@ class ServerConfiguration {
   std::string root_;
   bool auto_index_;
   std::string index_;
-  std::string index_if_dir_;
 
  public:
   /* constructor */

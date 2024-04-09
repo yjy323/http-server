@@ -12,8 +12,7 @@ ServerConfiguration::ServerConfiguration()
       client_max_body_size_("1M"),
       root_(),
       auto_index_(),
-      index_("index.html"),
-      index_if_dir_() {}
+      index_("index.html") {}
 
 ServerConfiguration::ServerConfiguration(
     const int& port, const std::set<std::string>& server_names,
