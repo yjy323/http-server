@@ -67,6 +67,9 @@ class ConfigurationParser {
   static bool isErrorCode(const std::string& error_code);
   static bool isAutoIndex(const std::string& auto_index);
 
+  static std::set<std::string> getDefaultServerName();
+  static std::set<std::string> getDefaultAllowedMethod();
+
  public:
   virtual ~ConfigurationParser();
 

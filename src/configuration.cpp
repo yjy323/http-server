@@ -5,14 +5,14 @@
 /** ServerConfiguration::constructor **/
 
 ServerConfiguration::ServerConfiguration()
-    : port_(0),
+    : port_(),
       server_names_(),
       location_(),
       error_page_(),
-      client_max_body_size_("1M"),
+      client_max_body_size_(),
       root_(),
       auto_index_(),
-      index_("index.html") {}
+      index_() {}
 
 ServerConfiguration::ServerConfiguration(
     const int& port, const std::set<std::string>& server_names,
@@ -100,13 +100,13 @@ const std::string& ServerConfiguration::index() const { return this->index_; }
 
 ServerConfiguration::LocationConfiguration::LocationConfiguration()
     : error_page_(),
-      client_max_body_size_("1M"),
+      client_max_body_size_(),
       root_(),
-      auto_index_(false),
-      index_("index.html"),
+      auto_index_(),
+      index_(),
       allowed_method_(),
       return_uri_(),
-      upload_store_("upload_store/") {}
+      upload_store_() {}
 
 ServerConfiguration::LocationConfiguration::LocationConfiguration(
     const std::map<int, std::string>& error_page,

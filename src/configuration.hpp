@@ -7,9 +7,6 @@
 #include <string>
 #include <vector>
 
-#define DEFAULT_PORT 80
-#define DEFAULT_AUTO_INDEX false
-
 class ServerConfiguration;
 typedef std::vector<ServerConfiguration> Configuration;
 

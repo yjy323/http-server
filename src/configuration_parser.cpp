@@ -7,6 +7,19 @@
 
 #include "file_reader.hpp"
 
+#define DEFAULT_PORT 8080
+#define DEFAULT_SERVER_NAMES ConfigurationParser::getDefaultServerName()
+#define DEFAULT_LOCATION \
+  std::map<std::string, ServerConfiguration::LocationConfiguration>()
+#define DEFAULT_ERROR_PAGE std::map<int, std::string>()
+#define DEFAULT_CLIENT_MAX_BODY_SIZE "1M"
+#define DEFAULT_SERVER_ROOT "/www/static"
+#define DEFAULT_AUTO_INDEX false
+#define DEFAULT_INDEX "index.html"
+#define DEFAULT_ALLOWED_METHOD ConfigurationParser::getDefaultAllowedMethod()
+#define DEFAULT_RETURN_URI ""
+#define DEFAULT_UPLOAD_STORE "/upload"
+
 const std::string ConfigurationParser::COMMENT_TOKEN = "#";
 const std::string ConfigurationParser::END_TOKEN = ";";
 const std::string ConfigurationParser::OPEN_BLOCK_TOKEN = "{";
@@ -132,14 +145,15 @@ int ConfigurationParser::parse(const Tokens& tokens,
 
 int ConfigurationParser::parseServer(const Tokens& tokens,
                                      ServerConfiguration& serverConfiguration) {
-  int port;
-  std::set<std::string> server_names;
-  std::map<std::string, ServerConfiguration::LocationConfiguration> location;
-  std::map<int, std::string> error_page;
-  std::string client_max_body_size;
-  std::string root;
-  bool auto_index;
-  std::string index;
+  int port = DEFAULT_PORT;
+  std::set<std::string> server_names = DEFAULT_SERVER_NAMES;
+  std::map<std::string, ServerConfiguration::LocationConfiguration> location =
+      DEFAULT_LOCATION;
+  std::map<int, std::string> error_page = DEFAULT_ERROR_PAGE;
+  std::string client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
+  std::string root = DEFAULT_SERVER_ROOT;
+  bool auto_index = DEFAULT_AUTO_INDEX;
+  std::string index = DEFAULT_INDEX;
 
   std::map<std::string, Tokens> locationTokenByPath;
   std::string locationPath;
@@ -246,9 +260,9 @@ int ConfigurationParser::parseLocation(
   std::string root = serverConfiguration.root();
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
-  std::set<std::string> allowed_method;
-  std::string return_uri;
-  std::string upload_store;
+  std::set<std::string> allowed_method = DEFAULT_ALLOWED_METHOD;
+  std::string return_uri = DEFAULT_RETURN_URI;
+  std::string upload_store = DEFAULT_UPLOAD_STORE;
 
   Token directive;
   Tokens valueTokens;
@@ -420,6 +434,8 @@ int ConfigurationParser::parseIndex(std::string& index,
 
 int ConfigurationParser::parseAllowed_method(
     std::set<std::string>& allowed_method, const Tokens& valueTokens) {
+  allowed_method.clear();
+
   if (valueTokens.size() < 1) return ERROR;
 
   for (size_t idx_value = 0; idx_value < valueTokens.size(); idx_value++) {
@@ -479,4 +495,21 @@ bool ConfigurationParser::isAutoIndex(const std::string& auto_index) {
   if (auto_index == "on" || auto_index == "off") return true;
 
   return false;
+}
+
+std::set<std::string> ConfigurationParser::getDefaultServerName() {
+  std::set<std::string> server_names;
+
+  server_names.insert("localhost");
+
+  return server_names;
+}
+
+std::set<std::string> ConfigurationParser::getDefaultAllowedMethod() {
+  std::set<std::string> allowed_method;
+
+  allowed_method.insert("GET");
+  allowed_method.insert("POST");
+
+  return allowed_method;
 }
