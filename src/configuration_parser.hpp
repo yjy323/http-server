@@ -8,6 +8,11 @@
 #include "core.hpp"
 
 class ConfigurationParser {
+ public:
+  virtual ~ConfigurationParser();
+
+  static int Parse(const std::string& contents, Configuration& configuration);
+
  private:
   static const std::string COMMENT_TOKEN;
   static const std::string END_TOKEN;
@@ -63,17 +68,12 @@ class ConfigurationParser {
   static int ParseUpload_store(std::string& upload_store,
                                const Tokens& valueTokens);
 
-  static bool IsPort(const std::string& port);
-  static bool IsErrorCode(const std::string& error_code);
-  static bool IsAutoIndex(const std::string& auto_index);
-
   static std::set<std::string> getDefaultServerName();
   static std::set<std::string> getDefaultAllowedMethod();
 
- public:
-  virtual ~ConfigurationParser();
-
-  static int Parse(const std::string& contents, Configuration& configuration);
+  static bool IsPort(const std::string& port);
+  static bool IsErrorCode(const std::string& error_code);
+  static bool IsAutoIndex(const std::string& auto_index);
 };
 
 #endif

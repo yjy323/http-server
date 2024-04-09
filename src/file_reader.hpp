@@ -7,16 +7,16 @@
 #include "core.hpp"
 
 class FileReader {
+ public:
+  virtual ~FileReader();
+
+  static int ReadFile(const std::string& filePath, std::string& contents);
+
  private:
   FileReader();
   FileReader(const FileReader& ref);
 
   FileReader& operator=(const FileReader& ref);
-
- public:
-  virtual ~FileReader();
-
-  static int ReadFile(const std::string& filePath, std::string& contents);
 };
 
 #endif

@@ -12,61 +12,8 @@ typedef std::vector<ServerConfiguration> Configuration;
 
 class ServerConfiguration {
  public:
-  /* Declaration */
-  class LocationConfiguration;
-
- private:
-  /* variable */
-  int port_;
-  std::set<std::string> server_names_;
-  std::map<std::string, LocationConfiguration> location_;
-  std::map<int, std::string> error_page_;
-  std::string client_max_body_size_;
-  std::string root_;
-  bool auto_index_;
-  std::string index_;
-
- public:
-  /* constructor */
-  ServerConfiguration();
-  ServerConfiguration(
-      const int& port, const std::set<std::string>& server_names,
-      const std::map<std::string, LocationConfiguration>& location,
-      const std::map<int, std::string>& error_page,
-      const std::string& client_max_body_size, const std::string& root,
-      const bool& auto_index, const std::string& index);
-  ServerConfiguration(const ServerConfiguration& ref);
-
-  /* destructor */
-  virtual ~ServerConfiguration();
-
-  /* operator overriding */
-  ServerConfiguration& operator=(const ServerConfiguration& ref);
-
-  /* getter */
-  const int& port() const;
-  const std::set<std::string>& server_names() const;
-  const std::map<std::string, LocationConfiguration>& location() const;
-  const std::map<int, std::string>& error_page() const;
-  const std::string& client_max_body_size() const;
-  const std::string& root() const;
-  const bool& auto_index() const;
-  const std::string& index() const;
-
- public:
   /* inner class */
   class LocationConfiguration {
-   private:
-    /* variable */
-    std::map<int, std::string> error_page_;
-    std::string client_max_body_size_;
-    std::string root_;
-    bool auto_index_;
-    std::string index_;
-    std::set<std::string> allowed_method_;
-    std::string return_uri_;
-    std::string upload_store_;
-
    public:
     /* contructor */
     LocationConfiguration();
@@ -94,7 +41,55 @@ class ServerConfiguration {
     const std::set<std::string>& allowed_method() const;
     const std::string& return_uri() const;
     const std::string& upload_store() const;
+
+   private:
+    /* variable */
+    std::map<int, std::string> error_page_;
+    std::string client_max_body_size_;
+    std::string root_;
+    bool auto_index_;
+    std::string index_;
+    std::set<std::string> allowed_method_;
+    std::string return_uri_;
+    std::string upload_store_;
   };
+
+  /* constructor */
+  ServerConfiguration();
+  ServerConfiguration(
+      const int& port, const std::set<std::string>& server_names,
+      const std::map<std::string, LocationConfiguration>& location,
+      const std::map<int, std::string>& error_page,
+      const std::string& client_max_body_size, const std::string& root,
+      const bool& auto_index, const std::string& index);
+  ServerConfiguration(const ServerConfiguration& ref);
+
+  /* destructor */
+  virtual ~ServerConfiguration();
+
+  /* operator overriding */
+  ServerConfiguration& operator=(const ServerConfiguration& ref);
+
+  /* getter */
+  const int& port() const;
+  const std::set<std::string>& server_names() const;
+  const std::map<std::string, LocationConfiguration>& location() const;
+  const std::map<int, std::string>& error_page() const;
+  const std::string& client_max_body_size() const;
+  const std::string& root() const;
+  const bool& auto_index() const;
+  const std::string& index() const;
+
+ private:
+  /* variable */
+  int port_;
+  std::set<std::string> server_names_;
+  std::map<std::string, LocationConfiguration> location_;
+  std::map<int, std::string> error_page_;
+  std::string client_max_body_size_;
+  std::string root_;
+  bool auto_index_;
+  std::string index_;
 };
 
 std::ostream& operator<<(std::ostream& out,

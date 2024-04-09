@@ -463,6 +463,23 @@ int ConfigurationParser::ParseUpload_store(std::string& upload_store,
   return OK;
 }
 
+std::set<std::string> ConfigurationParser::getDefaultServerName() {
+  std::set<std::string> server_names;
+
+  server_names.insert("localhost");
+
+  return server_names;
+}
+
+std::set<std::string> ConfigurationParser::getDefaultAllowedMethod() {
+  std::set<std::string> allowed_method;
+
+  allowed_method.insert("GET");
+  allowed_method.insert("POST");
+
+  return allowed_method;
+}
+
 bool ConfigurationParser::IsPort(const std::string& port) {
   int num = 0;
 
@@ -495,21 +512,4 @@ bool ConfigurationParser::IsAutoIndex(const std::string& auto_index) {
   if (auto_index == "on" || auto_index == "off") return true;
 
   return false;
-}
-
-std::set<std::string> ConfigurationParser::getDefaultServerName() {
-  std::set<std::string> server_names;
-
-  server_names.insert("localhost");
-
-  return server_names;
-}
-
-std::set<std::string> ConfigurationParser::getDefaultAllowedMethod() {
-  std::set<std::string> allowed_method;
-
-  allowed_method.insert("GET");
-  allowed_method.insert("POST");
-
-  return allowed_method;
 }

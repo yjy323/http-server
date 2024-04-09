@@ -1,99 +1,5 @@
 #include "configuration.hpp"
 
-/* ServerConfiguration */
-
-/** ServerConfiguration::constructor **/
-
-ServerConfiguration::ServerConfiguration()
-    : port_(),
-      server_names_(),
-      location_(),
-      error_page_(),
-      client_max_body_size_(),
-      root_(),
-      auto_index_(),
-      index_() {}
-
-ServerConfiguration::ServerConfiguration(
-    const int& port, const std::set<std::string>& server_names,
-    const std::map<std::string, LocationConfiguration>& location,
-    const std::map<int, std::string>& error_page,
-    const std::string& client_max_body_size, const std::string& root,
-    const bool& auto_index, const std::string& index)
-    : port_(port),
-      server_names_(server_names),
-      location_(location),
-      error_page_(error_page),
-      client_max_body_size_(client_max_body_size),
-      root_(root),
-      auto_index_(auto_index),
-      index_(index) {}
-
-ServerConfiguration::ServerConfiguration(const ServerConfiguration& ref) {
-  *this = ref;
-}
-
-/** ServerConfiguration::destructor **/
-ServerConfiguration::~ServerConfiguration() {}
-
-/** ServerConfiguration::operator overriding **/
-
-ServerConfiguration& ServerConfiguration::operator=(
-    const ServerConfiguration& ref) {
-  if (this == &ref) return *this;
-
-  this->port_ = ref.port();
-
-  for (std::set<std::string>::const_iterator it = ref.server_names().begin();
-       it != ref.server_names().end(); it++) {
-    this->server_names_.insert(*it);
-  }
-  for (std::map<std::string, LocationConfiguration>::const_iterator it =
-           ref.location().begin();
-       it != ref.location().end(); it++) {
-    this->location_.insert(std::make_pair(it->first, it->second));
-  }
-  for (std::map<int, std::string>::const_iterator it = ref.error_page().begin();
-       it != ref.error_page().end(); it++) {
-    this->error_page_.insert(std::make_pair(it->first, it->second));
-  }
-  this->client_max_body_size_ = ref.client_max_body_size();
-  this->root_ = ref.root();
-  this->auto_index_ = ref.auto_index();
-  this->index_ = ref.index();
-
-  return *this;
-}
-
-/** ServerConfiguration::getter **/
-
-const int& ServerConfiguration::port() const { return this->port_; }
-
-const std::set<std::string>& ServerConfiguration::server_names() const {
-  return this->server_names_;
-}
-
-const std::map<std::string, ServerConfiguration::LocationConfiguration>&
-ServerConfiguration::location() const {
-  return this->location_;
-}
-
-const std::map<int, std::string>& ServerConfiguration::error_page() const {
-  return this->error_page_;
-}
-
-const std::string& ServerConfiguration::client_max_body_size() const {
-  return this->client_max_body_size_;
-}
-
-const std::string& ServerConfiguration::root() const { return this->root_; }
-
-const bool& ServerConfiguration::auto_index() const {
-  return this->auto_index_;
-}
-
-const std::string& ServerConfiguration::index() const { return this->index_; }
-
 /* ServerConfiguration::LocationConfiguration */
 
 /** ServerConfiguration::LocationConfiguration::constructor **/
@@ -193,6 +99,100 @@ const std::string& ServerConfiguration::LocationConfiguration::upload_store()
     const {
   return this->upload_store_;
 }
+
+/* ServerConfiguration */
+
+/** ServerConfiguration::constructor **/
+
+ServerConfiguration::ServerConfiguration()
+    : port_(),
+      server_names_(),
+      location_(),
+      error_page_(),
+      client_max_body_size_(),
+      root_(),
+      auto_index_(),
+      index_() {}
+
+ServerConfiguration::ServerConfiguration(
+    const int& port, const std::set<std::string>& server_names,
+    const std::map<std::string, LocationConfiguration>& location,
+    const std::map<int, std::string>& error_page,
+    const std::string& client_max_body_size, const std::string& root,
+    const bool& auto_index, const std::string& index)
+    : port_(port),
+      server_names_(server_names),
+      location_(location),
+      error_page_(error_page),
+      client_max_body_size_(client_max_body_size),
+      root_(root),
+      auto_index_(auto_index),
+      index_(index) {}
+
+ServerConfiguration::ServerConfiguration(const ServerConfiguration& ref) {
+  *this = ref;
+}
+
+/** ServerConfiguration::destructor **/
+ServerConfiguration::~ServerConfiguration() {}
+
+/** ServerConfiguration::operator overriding **/
+
+ServerConfiguration& ServerConfiguration::operator=(
+    const ServerConfiguration& ref) {
+  if (this == &ref) return *this;
+
+  this->port_ = ref.port();
+
+  for (std::set<std::string>::const_iterator it = ref.server_names().begin();
+       it != ref.server_names().end(); it++) {
+    this->server_names_.insert(*it);
+  }
+  for (std::map<std::string, LocationConfiguration>::const_iterator it =
+           ref.location().begin();
+       it != ref.location().end(); it++) {
+    this->location_.insert(std::make_pair(it->first, it->second));
+  }
+  for (std::map<int, std::string>::const_iterator it = ref.error_page().begin();
+       it != ref.error_page().end(); it++) {
+    this->error_page_.insert(std::make_pair(it->first, it->second));
+  }
+  this->client_max_body_size_ = ref.client_max_body_size();
+  this->root_ = ref.root();
+  this->auto_index_ = ref.auto_index();
+  this->index_ = ref.index();
+
+  return *this;
+}
+
+/** ServerConfiguration::getter **/
+
+const int& ServerConfiguration::port() const { return this->port_; }
+
+const std::set<std::string>& ServerConfiguration::server_names() const {
+  return this->server_names_;
+}
+
+const std::map<std::string, ServerConfiguration::LocationConfiguration>&
+ServerConfiguration::location() const {
+  return this->location_;
+}
+
+const std::map<int, std::string>& ServerConfiguration::error_page() const {
+  return this->error_page_;
+}
+
+const std::string& ServerConfiguration::client_max_body_size() const {
+  return this->client_max_body_size_;
+}
+
+const std::string& ServerConfiguration::root() const { return this->root_; }
+
+const bool& ServerConfiguration::auto_index() const {
+  return this->auto_index_;
+}
+
+const std::string& ServerConfiguration::index() const { return this->index_; }
 
 /** ServerConfiguration::io overator overriding **/
 
