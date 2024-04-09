@@ -28,7 +28,7 @@ void Response::FindResourceConfiguration() {
 
   if (most_specific_pos == 0) {
     ServerConfiguration sc = this->server_conf_;
-    std::set<const std::string> default_allowed_method;
+    std::set<std::string> default_allowed_method;
     default_allowed_method.insert("GET");
 
     this->loc_conf_ = LocationConfiguration(
@@ -38,7 +38,7 @@ void Response::FindResourceConfiguration() {
 }
 
 bool Response::IsAllowedMethod(const char* method) {
-  std::set<const std::string> allowed_method = this->loc_conf_.allowed_method();
+  std::set<std::string> allowed_method = this->loc_conf_.allowed_method();
   if (allowed_method.find(method) != allowed_method.end()) {
     return true;
   } else {

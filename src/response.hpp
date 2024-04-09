@@ -13,8 +13,8 @@
 class Response {
  public:
   typedef ServerConfiguration::LocationConfiguration LocationConfiguration;
-  typedef std::map<const std::string,
-                   const LocationConfiguration>::const_iterator LocConfIterator;
+  typedef std::map<std::string, LocationConfiguration>::const_iterator
+      LocConfIterator;
 
   enum ResourceType { kFile, kDirectory };
   Response(Request&, ServerConfiguration&);

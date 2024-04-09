@@ -34,30 +34,29 @@ class ConfigurationParser {
       ServerConfiguration::LocationConfiguration& locationConfiguration);
 
   static int parseServerLine(const Token& directive, const Tokens& valueTokens,
-                             int& port,
-                             std::set<const std::string>& server_names,
-                             std::map<const int, const std::string>& error_page,
+                             int& port, std::set<std::string>& server_names,
+                             std::map<int, std::string>& error_page,
                              std::string& client_max_body_size,
                              std::string& root, bool& auto_index,
                              std::string& index);
   static int parseLocationLine(
       const Token& directive, const Tokens& valueTokens,
-      std::map<const int, const std::string>& error_page,
-      std::string& client_max_body_size, std::string& root, bool& auto_index,
-      std::string& index, std::set<const std::string>& allowed_method,
-      std::string& return_uri, std::string& upload_store);
+      std::map<int, std::string>& error_page, std::string& client_max_body_size,
+      std::string& root, bool& auto_index, std::string& index,
+      std::set<std::string>& allowed_method, std::string& return_uri,
+      std::string& upload_store);
 
   static int parsePort(int& port, const Tokens& valueTokens);
-  static int parseServer_names(std::set<const std::string>& server_names,
+  static int parseServer_names(std::set<std::string>& server_names,
                                const Tokens& valueTokens);
-  static int parseError_page(std::map<const int, const std::string>& error_page,
+  static int parseError_page(std::map<int, std::string>& error_page,
                              const Tokens& valueTokens);
   static int parseClient_max_body_size(std::string& client_max_body_size,
                                        const Tokens& valueTokens);
   static int parseRoot(std::string& root, const Tokens& valueTokens);
   static int parseAuto_index(bool& auto_index, const Tokens& valueTokens);
   static int parseIndex(std::string& index, const Tokens& valueTokens);
-  static int parseAllowed_method(std::set<const std::string>& allowed_method,
+  static int parseAllowed_method(std::set<std::string>& allowed_method,
                                  const Tokens& valueTokens);
   static int parseReturn_uri(std::string& return_uri,
                              const Tokens& valueTokens);
