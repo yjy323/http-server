@@ -68,6 +68,9 @@ class ConfigurationParser {
   static int ParseUpload_store(std::string& upload_store,
                                const Tokens& valueTokens);
 
+  static int ValidConfiguration(const Configuration& conf);
+  static int ValidServerUnique(const Configuration& conf);
+
   static std::set<std::string> getDefaultServerName();
   static std::set<std::string> getDefaultAllowedMethod();
 

@@ -16,6 +16,8 @@
 #define DEFAULT_UPLOAD_STORE "/upload"
 
 #define PARSE_ERROR_MESSAGE "an not parse the configuration file"
+#define PORT_HOST_VALID_ERROR_MESSAGE \
+  "The combination of the server's port and server_name must be unique."
 
 const std::string ConfigurationParser::COMMENT_TOKEN = "#";
 const std::string ConfigurationParser::END_TOKEN = ";";
@@ -34,6 +36,10 @@ int ConfigurationParser::Parse(const std::string& contents,
       Parse(tokens, configuration) == ERROR) {
     std::cerr << PARSE_ERROR_MESSAGE << std::endl;
 
+    return ERROR;
+  }
+
+  if (ValidConfiguration(configuration) == ERROR) {
     return ERROR;
   }
 
@@ -145,7 +151,7 @@ int ConfigurationParser::Parse(const Tokens& tokens,
 int ConfigurationParser::ParseServer(const Tokens& tokens,
                                      ServerConfiguration& serverConfiguration) {
   int port = DEFAULT_PORT;
-  std::set<std::string> server_names = DEFAULT_SERVER_NAMES;
+  std::set<std::string> server_names;
   std::map<std::string, ServerConfiguration::LocationConfiguration> location =
       DEFAULT_LOCATION;
   std::map<int, std::string> error_page = DEFAULT_ERROR_PAGE;
@@ -244,6 +250,8 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
     location.insert(std::make_pair(iter->first, locationConfiguration));
   }
 
+  if (server_names.size() == 0) server_names = DEFAULT_SERVER_NAMES;
+
   serverConfiguration =
       ServerConfiguration(port, server_names, location, error_page,
                           client_max_body_size, root, auto_index, index);
@@ -259,7 +267,7 @@ int ConfigurationParser::ParseLocation(
   std::string root = serverConfiguration.root();
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
-  std::set<std::string> allowed_method = DEFAULT_ALLOWED_METHOD;
+  std::set<std::string> allowed_method;
   std::string return_uri = DEFAULT_RETURN_URI;
   std::string upload_store = DEFAULT_UPLOAD_STORE;
 
@@ -290,6 +298,8 @@ int ConfigurationParser::ParseLocation(
   }
 
   if (directive != "") return ERROR;
+
+  if (allowed_method.size() == 0) allowed_method = DEFAULT_ALLOWED_METHOD;
 
   locationConfiguartion = ServerConfiguration::LocationConfiguration(
       error_page, client_max_body_size, root, auto_index, index, allowed_method,
@@ -458,6 +468,40 @@ int ConfigurationParser::ParseUpload_store(std::string& upload_store,
   if (valueTokens.size() != 1) return ERROR;
 
   upload_store = valueTokens[0];
+
+  return OK;
+}
+
+int ConfigurationParser::ValidConfiguration(const Configuration& conf) {
+  if (ValidServerUnique(conf) == ERROR) return ERROR;
+
+  return OK;
+}
+
+int ConfigurationParser::ValidServerUnique(const Configuration& conf) {
+  std::map<int, std::set<std::string> > server_names;
+  std::vector<std::pair<int, std::string> > v_port_server_name;
+
+  for (Configuration::const_iterator it_conf = conf.begin();
+       it_conf != conf.end(); it_conf++) {
+    for (std::set<std::string>::const_iterator it_server_names =
+             it_conf->server_names().begin();
+         it_server_names != it_conf->server_names().end(); it_server_names++) {
+      if (server_names.find(it_conf->port()) == server_names.end()) {
+        server_names[it_conf->port()] = std::set<std::string>();
+        server_names[it_conf->port()].insert(*it_server_names);
+      } else {
+        if (server_names[it_conf->port()].find(*it_server_names) !=
+            server_names[it_conf->port()].end()) {
+          std::cerr << PORT_HOST_VALID_ERROR_MESSAGE << std::endl;
+
+          return ERROR;
+        } else {
+          server_names[it_conf->port()].insert(*it_server_names);
+        }
+      }
+    }
+  }
 
   return OK;
 }
