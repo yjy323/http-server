@@ -1,5 +1,6 @@
 #include "cgi.hpp"
 
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -10,33 +11,43 @@ Cgi::Cgi(const Cgi& obj) {}
 Cgi::~Cgi() {}
 Cgi& Cgi::operator=(const Cgi& obj) {}
 
-void SetEnvironment() {
-  /*
-                REQUEST_METHOD(GET, POST)
-                QUERY_STRING(GET)
-                CONTENT_TYPE(POST)
-                CONTENT_LENGTH(POST)
-  */
-}
-
-int Cgi::ExecuteScript(const char* script_path) {
-  std::ifstream file(script_path);
-  if (!file.is_open()) {
+int Cgi::ExecuteCgi(const char* cgi_path, std::string& extension) {
+  std::ifstream ifs(cgi_path);
+  if (!ifs.is_open()) {
     return 404;
   }
-  std::string buffer;
-  std::getline(file, buffer);
-  buffer.replace(buffer.find("#!"), 2, "");
-  const char* cgi_script = buffer.c_str();
-  const char* request_method = "REQUEST_METHOD=POST";
+
+  std::vector<char* const> argv;
+  std::vector<char* const> envp;
+
+  if (extension == "cgi") {
+    argv.push_back(const_cast<char*>(cgi_path));
+    argv.push_back(NULL);
+
+  } else if (extension == "py") {
+    std::string buffer;
+    std::getline(ifs, buffer);
+    if (buffer.size() > 2 && buffer.find("#!") == 0) {
+      buffer.replace(0, 2, "");
+    } else {
+      return 403;
+    }
+    const char* cgi_program = buffer.c_str();
+    argv.push_back(const_cast<char*>(cgi_program));
+    argv.push_back(const_cast<char*>(cgi_path));
+    argv.push_back(NULL);
+
+  } else {
+    return 403;
+  }
+
+  const char* request_method = "REQUEST_METHOD=GET";
   const char* content_length = "CONTENT_LENGTH=15";
   const char* query_string = "QUERY_STRING=username=jooyoung";
-  char* const argv[] = {const_cast<char*>(cgi_script),
-                        const_cast<char*>(script_path), NULL};
 
-  char* const envp[] = {const_cast<char*>(request_method),
-                        const_cast<char*>(content_length),
-                        const_cast<char*>(query_string), NULL};
+  envp.push_back(const_cast<char*>(request_method));
+  envp.push_back(const_cast<char*>(content_length));
+  envp.push_back(const_cast<char*>(query_string));
 
   int cgi2server_fd[2];
   int server2cgi_fd[2];
@@ -55,9 +66,11 @@ int Cgi::ExecuteScript(const char* script_path) {
     close(server2cgi_fd[0]);
 
     close(cgi2server_fd[0]);
+    dup2(cgi2server_fd[1], STDOUT_FILENO);
     close(cgi2server_fd[1]);
 
-    execve(cgi_script, argv, envp);
+    execve(*argv.data(), argv.data(), envp.data());
+    std::exit(500);
   } else {
     int orig_stdin = dup(STDIN_FILENO);
     int orig_stdout = dup(STDOUT_FILENO);
@@ -66,7 +79,7 @@ int Cgi::ExecuteScript(const char* script_path) {
     dup2(server2cgi_fd[1], STDOUT_FILENO);
     close(server2cgi_fd[1]);
 
-    write(STDOUT_FILENO, "username=beachu", 15);
+    // write(STDOUT_FILENO, "username=beachu", 15);
 
     close(cgi2server_fd[1]);
     dup2(cgi2server_fd[0], STDIN_FILENO);
@@ -85,14 +98,12 @@ int Cgi::ExecuteScript(const char* script_path) {
 
     dup2(orig_stdin, STDIN_FILENO);
     dup2(orig_stdout, STDOUT_FILENO);
-    close(server2cgi_fd[1]);
-    close(cgi2server_fd[0]);
     close(orig_stdin);
     close(orig_stdout);
 
     // 파이프로부터 응답을 읽어옴
-
-    std::cout << response;
+    std::cout << response.substr(0, response.find("\r\n\r\n") + 4);
+    std::cout << response.substr(response.find("\r\n\r\n") + 4);
   }
 
   return 0;

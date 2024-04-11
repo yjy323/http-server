@@ -9,6 +9,9 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
+
+#include "request.hpp"
 
 class Cgi {
  private:
@@ -18,7 +21,8 @@ class Cgi {
   ~Cgi();
   Cgi& operator=(const Cgi& obj);
 
-  int ExecuteScript(const char*);
+  std::vector<const char*> envp_;
+  int ExecuteCgi(const char*, std::string&);
 };
 
 #endif
