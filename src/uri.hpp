@@ -13,8 +13,6 @@
 #include "configuration.hpp"
 #include "utils.hpp"
 
-#define MAX_URI_LENGTH 8000  // Todo: 최대 길이 정의
-
 class Uri {
  public:
   enum RequestTargetFrom {
@@ -49,9 +47,9 @@ class Uri {
   std::string user_;
   std::string password_;
   std::string host_;
-  int port_;  // todo - socket API의 port 자료구조로 변경
-  std::list<PathSegment> path_segments_;
-  std::map<const std::string, std::string> query_;
+  int port_;
+  std::string path_;
+  std::string query_string_;
 };
 
 #endif

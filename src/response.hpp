@@ -39,6 +39,9 @@ class Response {
   std::string target_resource_;
   ResourceType target_resource_type_;
 
+  std::string status_line_;
+  std::string response_header_;
+  std::string response_body_;
   std::string response_message_;
 };
 

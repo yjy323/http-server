@@ -111,7 +111,9 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
 
         std::cout << " [Request] " << std::endl;
         ssize_t offset = 0;
-        request.ParseRequestHeader(buffer, bytes_read, offset);
+        if (request.ParseRequestHeader(buffer, bytes_read, offset) == ERROR) {
+          std::cout << "ERROR\n";
+        }
         request.uri_.ReconstructTargetUri(request.http_host_);
 
         ServerConfiguration sc = sk.ConfByHost(request.http_host_);
