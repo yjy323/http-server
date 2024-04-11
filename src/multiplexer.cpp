@@ -16,6 +16,11 @@
 #define KEVENT_ERROR_MASSAGE "kevent() failed."
 #define RECV_ERROR_MASSAGE "recv() from client failed."
 #define ACCEPT_ERROR_MASSAGE "accept() from client failed."
+#define UNDEFINE_FILTER_ERROR_MASSAGE "catch undefine filter."
+#define NMANAGE_CLIENT_ERROR_MASSAGE \
+  "A message request to a client that is not being managed."
+#define REQUEST_HEADER_PARSE_ERROR_MASSAGE \
+  "An error occurred while parsing header."
 
 // for test
 #define TEST_RESPONSE \
@@ -79,58 +84,107 @@ int Multiplexer::StartServer() {
 
 void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
   for (int i = 0; i < nev; ++i) {
-    // 연결 요청일 경우
+    if (events[i].filter == EVFILT_READ) {
+      HandleReadEvent(events[i]);
+    } else if (events[i].filter == EVFILT_WRITE) {
+      HandleWriteEvent(events[i]);
+    } else if (events[i].filter == EVFILT_PROC) {
+    } else {
+      std::cerr << UNDEFINE_FILTER_ERROR_MASSAGE << std::endl;
+    }
+  }
+}
 
-    if (IsExistServerFd(events[i].ident)) {
-      AcceptWithClient(events[i].ident);
-    } else {  // 데이터 송신일 경우
-      // client socket 내용 read
-      char buffer[BUFFER_SIZE];
-      ssize_t bytes_read = recv(events[i].ident, buffer, sizeof(buffer) - 1, 0);
-      if (bytes_read <= 0) {
-        if (bytes_read == 0) {
-          std::cout << "Client " << events[i].ident << " disconnected "
-                    << std::endl;
-        } else {
-          std::cerr << RECV_ERROR_MASSAGE << std::endl;
-        }
+void Multiplexer::HandleReadEvent(struct kevent event) {
+  if (IsExistServerFd(event.ident)) {
+    AcceptWithClient(event.ident);
+  } else {  // 데이터 송신일 경우
+    if (this->clients_.find(event.ident) == this->clients_.end()) {
+      std::cerr << NMANAGE_CLIENT_ERROR_MASSAGE << std::endl;
+    }
 
-        // Close client socket and remove it from the vector
-        close(events[i].ident);
-        this->clients_.erase(events[i].ident);
+    // client socket 내용 read
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_read = recv(event.ident, buffer, sizeof(buffer) - 1, 0);
 
-        // Unregister client socket from kqueue
-        RegistKevent(events[i].ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-      } else {
-        buffer[bytes_read] = 0;
-        /*
-                기본 기능 구현 시작
-        */
-        Request request;
-        Server sk = this->clients_[events[i].ident].server();
+    if (bytes_read == -1) {
+      // Close client socket and remove it from the vector
+      close(event.ident);
+      this->clients_.erase(event.ident);
 
-        std::cout << " [Request] " << std::endl;
-        ssize_t offset = 0;
-        request.ParseRequestHeader(buffer, bytes_read, offset);
-        request.uri_.ReconstructTargetUri(request.http_host_);
+      // Unregister client socket from kqueue
+      RegistKevent(event.ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+      std::cerr << RECV_ERROR_MASSAGE << std::endl;
 
-        ServerConfiguration sc = sk.ConfByHost(request.http_host_);
-        // 대체 코드 end
+      return;
+    }
+    buffer[bytes_read] = 0;
 
-        std::cout << buffer << std::endl;
+    this->clients_[event.ident].set_request_str(
+        this->clients_[event.ident].request_str() + buffer);
 
-        Response response(request, sc);
-        response.HttpTransaction();
+    std::clog << " [ Recive Request Start ] " << std::endl;
+    std::clog << buffer << std::endl;
+    std::clog << " [ Recive Request End ] " << std::endl;
+  }
+  if (size_t header_end = this->clients_[event.ident].request_str().find(
+                              "\r\n\r\n") != std::string::npos) {
+    ssize_t offset = 0;
 
-        std::cout << response.response_message_ << std::endl;
-        send(events[i].ident, response.response_message_.c_str(),
-             response.response_message_.size(), 0);
-        /*
-                기본 기능 구현 끝
-        */
+    if (this->clients_[event.ident].request_instance().ParseRequestHeader(
+            this->clients_[event.ident].request_str().c_str(),
+            this->clients_[event.ident].request_str().length(),
+            offset) == ERROR) {
+      std::cerr << REQUEST_HEADER_PARSE_ERROR_MASSAGE << std::endl;
+      close(event.ident);
+      this->clients_.erase(event.ident);
+
+      return;
+    }
+
+    if (this->clients_[event.ident].request().http_content_length_ ==
+        0) {  // -1로 교체 예정
+      RegistKevent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, NULL);
+    } else {
+      ssize_t body_length =
+          this->clients_[event.ident].request_str().length() - (header_end + 4);
+
+      if (body_length >=
+          this->clients_[event.ident].request().http_content_length_) {
+        RegistKevent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
+                     NULL);
       }
     }
   }
+}
+
+void Multiplexer::HandleWriteEvent(struct kevent event) {
+  Client client = this->clients_[event.ident];
+  Request request;
+  Server sk = this->clients_[event.ident].server();
+
+  std::clog << " [Request] " << std::endl;
+  ssize_t offset = 0;
+  request.ParseRequestHeader(client.request_str().c_str(),
+                             client.request_str().length(), offset);
+  request.uri_.ReconstructTargetUri(request.http_host_);
+
+  ServerConfiguration sc = sk.ConfByHost(request.http_host_);
+
+  std::clog << " [ Request Start ] " << std::endl;
+  std::clog << client.request_str() << std::endl;
+  std::clog << " [ Request End ] " << std::endl;
+
+  Response response(request, sc);
+  response.HttpTransaction();
+
+  std::clog << " [ Response Start ] " << std::endl;
+  std::clog << response.response_message_ << std::endl;
+  std::clog << " [ Response End ] " << std::endl;
+
+  send(event.ident, response.response_message_.c_str(),
+       response.response_message_.size(), 0);
+  std::clog << response.response_message_ << std::endl;
 }
 
 int Multiplexer::AcceptWithClient(int server_fd) {

@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "request.hpp"
 #include "server.hpp"
 
 class Client {
@@ -16,16 +17,19 @@ class Client {
 
   const int& fd() const;
   const Server& server() const;
-  const std::string& request() const;
+  const std::string& request_str() const;
   const std::string& response() const;
+  const Request& request() const;
+  Request& request_instance();
 
-  void set_request(const std::string& request);
+  void set_request_str(const std::string& request);
   void set_response(const std::string& response);
 
  private:
   Server server_;
   int fd_;
-  std::string request_;
+  Request request_;
+  std::string request_str_;
   std::string response_;
 };
 

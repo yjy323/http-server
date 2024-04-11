@@ -212,7 +212,8 @@ int Request::ValidateStandardHttpHeader() {
   return OK;
 }
 
-int Request::ParseRequestHeader(char* buff, ssize_t size, ssize_t& offset) {
+int Request::ParseRequestHeader(const char* buff, ssize_t size,
+                                ssize_t& offset) {
   /*
           HTTP-message = start-line CRLF
                         *( field-line CRLF )

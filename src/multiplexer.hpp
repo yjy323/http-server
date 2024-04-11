@@ -25,6 +25,8 @@ class Multiplexer {
 
   int StartServer();
   void HandleEvents(int nev, struct kevent events[]);
+  void HandleReadEvent(struct kevent event);
+  void HandleWriteEvent(struct kevent event);
   int AcceptWithClient(int server_fd);
   int RegistKevent(int ident, int16_t filter, uint64_t flags, uint32_t fflags,
                    int64_t data, uint64_t* udata);
