@@ -48,9 +48,7 @@ class Uri {
   std::string password_;
   std::string host_;
   int port_;
-
-  // Path, Query 자료구조 변경
-  std::list<std::string> path_segments_;
+  std::string path_;
   std::string query_string_;
 };
 

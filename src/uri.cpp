@@ -45,7 +45,7 @@ Uri& Uri::operator=(const Uri& obj) {
     this->scheme_ = obj.scheme_;
     this->host_ = obj.host_;
     this->port_ = obj.port_;
-    this->path_segments_ = obj.path_segments_;
+    this->path_ = obj.path_;
     this->query_string_ = obj.query_string_;
   }
   return *this;
@@ -135,7 +135,7 @@ int Uri::ParsePathSegment(std::string& path_segment) {
         break;
     }
   }
-  path_segments_.push_back(path_segment);
+  this->path_ = path_segment;
   return OK;
 }
 
@@ -208,14 +208,7 @@ int Uri::ParseUriComponent(std::string& request_uri) {
     request_uri.erase(0, 1);
   }
 
-  std::vector<std::string> path_component = Split(request_uri, '/');
-  for (PcIterator pit = path_component.begin(); pit != path_component.end();
-       ++pit) {
-    if (ParsePathSegment(*pit) == ERROR) {
-      return ERROR;
-    }
-  }
-  if (this->path_segments_.size() == 0) {
+  if (request_uri.size() > 0 && ParsePathSegment(request_uri) == ERROR) {
     return ERROR;
   }
 
@@ -227,12 +220,7 @@ int Uri::ReconstructTargetUri(std::string& request_host) {
     this->scheme_ = "http";
     this->host_ = request_host;
   }
-  typedef std::list<std::string>::iterator PsIterator;
 
-  // this->request_target_ = docroot;
-  for (PsIterator it = this->path_segments_.begin();
-       it != this->path_segments_.end(); ++it) {
-    this->request_target_ += "/" + (*it);
-  }
+  this->request_target_ = this->path_;
   return OK;
 }
