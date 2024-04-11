@@ -128,7 +128,6 @@ int Response::HttpGetMethod() {
 
       response_message_ = status_line;
     }
-    // 404
   }
   return OK;
 }
