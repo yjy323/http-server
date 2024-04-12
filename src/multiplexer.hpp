@@ -42,9 +42,9 @@ class Multiplexer {
 
   Server& ServerInstanceByPort(int port);
 
-  int server_identifier_;
-  int client_identifier_;
-  int cgi_identifier_;
+  int server_udata_;
+  int client_udata_;
+  int cgi_udata_;
 
   std::vector<Server> servers_;
   std::map<int, Client> clients_;

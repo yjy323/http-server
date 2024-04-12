@@ -12,9 +12,9 @@
 #define KEVENT_SIZE 10
 #define BUFFER_SIZE 2048
 #define EVENT_TIMEOUT_SEC 2
-#define SERVER_IDENTIFIER (1 << 0)
-#define CLIENT_IDENTIFIER (1 << 1)
-#define CGI_IDENTIFIER (1 << 1)
+#define SERVER_UDATA (1 << 0)
+#define CLIENT_UDATA (1 << 1)
+#define CGI_UDATA (1 << 1)
 
 #define KQUEUE_ERROR_MASSAGE "kqueue() failed."
 #define KEVENT_ERROR_MASSAGE "kevent() failed."
@@ -27,9 +27,9 @@
   "An error occurred while parsing header."
 
 Multiplexer::Multiplexer()
-    : server_identifier_(SERVER_IDENTIFIER),
-      client_identifier_(CLIENT_IDENTIFIER),
-      cgi_identifier_(CGI_IDENTIFIER),
+    : server_udata_(SERVER_UDATA),
+      client_udata_(CLIENT_UDATA),
+      cgi_udata_(CGI_UDATA),
       servers_(),
       clients_(),
       kq_(),
@@ -85,7 +85,7 @@ int Multiplexer::Multiplexing() {
   for (std::vector<Server>::const_iterator it = this->servers_.begin();
        it != this->servers_.end(); it++) {
     if (RegistKevent(it->fd(), EVFILT_READ, EV_ADD, 0, 0,
-                     static_cast<void*>(&this->server_identifier_)) == ERROR)
+                     static_cast<void*>(&this->server_udata_)) == ERROR)
       return ERROR;
 
     std::clog << "server[ fd: " << it->fd() << " ] listen event 등록 완료"
@@ -146,10 +146,10 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
 }
 
 void Multiplexer::HandleReadEvent(struct kevent event) {
-  if (*static_cast<int*>(event.udata) == server_identifier_) {
+  if (*static_cast<int*>(event.udata) == server_udata_) {
     std::clog << "[READ event sub type] connection" << std::endl;
     AcceptWithClient(event.ident);
-  } else if (*static_cast<int*>(event.udata) == client_identifier_) {
+  } else if (*static_cast<int*>(event.udata) == client_udata_) {
     std::clog << "[READ event sub type] message" << std::endl;
     Client& client = this->clients_[event.ident];
 
@@ -185,7 +185,7 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
 
         client.MakeResponse();
         RegistKevent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
-                     static_cast<void*>(&this->client_identifier_));
+                     static_cast<void*>(&this->client_udata_));
       }
     }
   } else {
@@ -209,7 +209,7 @@ void Multiplexer::HandleCgiEvent(struct kevent event) {
   // // cgi 처리
   // int pid = -1 /* cgi 처리 */;
   // RegistKevent(pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, 0, 0,
-  //              static_cast<void*>(&this->cgi_identifier_));
+  //              static_cast<void*>(&this->cgi_udata_));
 }
 
 int Multiplexer::ReadClientMessage(int client_fd, std::string& message) {
@@ -221,7 +221,7 @@ int Multiplexer::ReadClientMessage(int client_fd, std::string& message) {
     this->clients_.erase(client_fd);
 
     RegistKevent(client_fd, EVFILT_READ, EV_DELETE, 0, 0,
-                 static_cast<void*>(&this->client_identifier_));
+                 static_cast<void*>(&this->client_udata_));
     std::cerr << RECV_ERROR_MASSAGE << std::endl;
 
     return ERROR;
@@ -259,7 +259,7 @@ int Multiplexer::AcceptWithClient(int server_fd) {
   // client socket fd 관리 추가
   // kqueue에 client socket 등록
   if (RegistKevent(client_fd, EVFILT_READ, EV_ADD, 0, 0,
-                   static_cast<void*>(&this->client_identifier_)) == ERROR)
+                   static_cast<void*>(&this->client_udata_)) == ERROR)
     return ERROR;
 
   std::clog << "client[ fd: " << client_fd << "] 성공적으로 connect"
