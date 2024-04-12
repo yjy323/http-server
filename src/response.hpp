@@ -6,6 +6,7 @@
 #include <ctime>
 #include <fstream>
 
+#include "cgi.hpp"
 #include "configuration.hpp"
 #include "request.hpp"
 #include "utils.hpp"
@@ -29,7 +30,14 @@ class Response {
   int HttpPostMethod();
   int HttpDeleteMethod();
 
-  bool IsAllowedMethod(const char* method);
+  void SetStatusLine();
+  int SetResponseHeader();
+
+  int GetMimeType();
+  int GetStaticFile();
+  int GetCgiScript();
+
+  bool IsAllowedMethod(const char*);
 
   Request request_;
   ServerConfiguration server_conf_;
@@ -37,6 +45,7 @@ class Response {
   LocationConfiguration loc_conf_;
   std::string request_target_;
   std::string target_resource_;
+  std::string target_resource_extension_;
   ResourceType target_resource_type_;
 
   std::string status_line_;

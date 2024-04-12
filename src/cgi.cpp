@@ -6,32 +6,42 @@
 #include <sstream>
 #include <string>
 
-Cgi::Cgi() {}
-Cgi::Cgi(const Cgi& obj) {}
-Cgi::~Cgi() {}
-Cgi& Cgi::operator=(const Cgi& obj) {}
+char* SetEnv(const char*, const char*);
 
-int Cgi::ExecuteCgi(const char* cgi_path, std::string& extension) {
-  std::ifstream ifs(cgi_path);
-  if (!ifs.is_open()) {
-    return 404;
+char* SetEnv(const char* key, const char* value) {
+  char* env = new char[std::strlen(key) + std::strlen(value) + 1];
+  std::strcpy(env, key);
+  std::strcat(env, value);
+  return (char* const)env;
+}
+
+bool Cgi::IsSupportedCgi(std::string& extension) {
+  if (extension == "cgi" || extension == "py") {
+    return true;
+  } else {
+    return false;
   }
+}
+
+int Cgi::ExecuteCgi(const char* cgi_path, const std::string& extension,
+                    Response& response) {
+  std::ifstream ifs(cgi_path);
 
   std::vector<char* const> argv;
-  std::vector<char* const> envp;
 
-  if (extension == "cgi") {
+  if (extension == "cgi\0") {
     argv.push_back(const_cast<char*>(cgi_path));
     argv.push_back(NULL);
 
-  } else if (extension == "py") {
+  } else if (extension == "py\0") {
     std::string buffer;
-    std::getline(ifs, buffer);
+    std::getline(ifs, buffer, '\n');
     if (buffer.size() > 2 && buffer.find("#!") == 0) {
       buffer.replace(0, 2, "");
     } else {
       return 403;
     }
+
     const char* cgi_program = buffer.c_str();
     argv.push_back(const_cast<char*>(cgi_program));
     argv.push_back(const_cast<char*>(cgi_path));
@@ -40,15 +50,6 @@ int Cgi::ExecuteCgi(const char* cgi_path, std::string& extension) {
   } else {
     return 403;
   }
-
-  const char* request_method = "REQUEST_METHOD=GET";
-  const char* content_length = "CONTENT_LENGTH=15";
-  const char* query_string = "QUERY_STRING=username=jooyoung";
-
-  envp.push_back(const_cast<char*>(request_method));
-  envp.push_back(const_cast<char*>(content_length));
-  envp.push_back(const_cast<char*>(query_string));
-
   int cgi2server_fd[2];
   int server2cgi_fd[2];
 
@@ -69,7 +70,21 @@ int Cgi::ExecuteCgi(const char* cgi_path, std::string& extension) {
     dup2(cgi2server_fd[1], STDOUT_FILENO);
     close(cgi2server_fd[1]);
 
+    std::vector<char* const> envp;
+    if (response.request_.method_ == "GET\0") {
+      envp.push_back(SetEnv("REQUEST_METHOD=", "GET"));
+      envp.push_back(SetEnv("QUERY_STRING=",
+                            response.request_.uri_.query_string_.c_str()));
+
+    } else if (response.request_.method_ == "POST\0") {
+      envp.push_back(SetEnv("REQUEST_METHOD=", "POST"));
+      envp.push_back(SetEnv(
+          "CONTENT_LENGTH=",
+          std::to_string(response.request_.http_content_length_).c_str()));
+    }
+
     execve(*argv.data(), argv.data(), envp.data());
+    // ERROR
     std::exit(500);
   } else {
     int orig_stdin = dup(STDIN_FILENO);
@@ -79,18 +94,19 @@ int Cgi::ExecuteCgi(const char* cgi_path, std::string& extension) {
     dup2(server2cgi_fd[1], STDOUT_FILENO);
     close(server2cgi_fd[1]);
 
-    // write(STDOUT_FILENO, "username=beachu", 15);
+    write(STDOUT_FILENO, response.request_.body_.c_str(),
+          response.request_.http_content_length_);
 
     close(cgi2server_fd[1]);
     dup2(cgi2server_fd[0], STDIN_FILENO);
     close(cgi2server_fd[0]);
 
-    char buffer[4096];
-    std::string response;
+    char buffer[8192];
+    std::string cgi_response;
 
     ssize_t count;
     while ((count = read(STDIN_FILENO, buffer, sizeof(buffer))) > 0) {
-      response.append(buffer, count);
+      cgi_response.append(buffer, count);
     }
 
     int status;
@@ -101,9 +117,10 @@ int Cgi::ExecuteCgi(const char* cgi_path, std::string& extension) {
     close(orig_stdin);
     close(orig_stdout);
 
-    // 파이프로부터 응답을 읽어옴
-    std::cout << response.substr(0, response.find("\r\n\r\n") + 4);
-    std::cout << response.substr(response.find("\r\n\r\n") + 4);
+    response.response_header_ +=
+        cgi_response.substr(0, cgi_response.find("\r\n\r\n") + 4);
+    response.response_body_ +=
+        cgi_response.substr(cgi_response.find("\r\n\r\n") + 4);
   }
 
   return 0;

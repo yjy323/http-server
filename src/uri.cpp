@@ -123,6 +123,7 @@ int Uri::ParsePathSegment(std::string& path_segment) {
         if (!Abnf::IsPctEncoded(path_segment, i)) {
           return ERROR;
         }
+      case '/':
       case ';':
       case '=':
       case ':':
@@ -181,8 +182,6 @@ int Uri::ParseUriComponent(std::string& request_uri) {
                 absolute-path = 1*( "/" segment )
    */
 
-  typedef std::vector<std::string>::iterator PcIterator;
-
   // todo - request_uri 존재 여부는 상위 레벨에서 처리되어야 할 것 같다.
   if (request_uri.length() == 0) {
     return ERROR;
@@ -208,7 +207,7 @@ int Uri::ParseUriComponent(std::string& request_uri) {
     request_uri.erase(0, 1);
   }
 
-  if (request_uri.size() > 0 && ParsePathSegment(request_uri) == ERROR) {
+  if (request_uri.size() == 0 || ParsePathSegment(request_uri) == ERROR) {
     return ERROR;
   }
 
@@ -221,6 +220,6 @@ int Uri::ReconstructTargetUri(std::string& request_host) {
     this->host_ = request_host;
   }
 
-  this->request_target_ = this->path_;
+  this->request_target_ = "/" + this->path_;
   return OK;
 }

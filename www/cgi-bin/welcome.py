@@ -5,7 +5,7 @@ import sys
 import cgi
 
 # Set the content type to HTML
-print("Content-type:text/html", end="\r\n")
+print("Content-type: text/html", end="\r\n")
 
 
 #Check if the request method is POST
@@ -48,9 +48,9 @@ html_template = """<!DOCTYPE html>
 </body>
 </html>"""
 
-content_len = len(html_template)
-print("Content-Length: {}".format(content_len), end="\r\n")
+html_template = html_template % username
+print("Content-length: {}".format(len(html_template)), end="\r\n")
 print("", end="\r\n")
 
 # Print the HTML response with the username dynamically inserted
-print(html_template % username, end="\r\n")
+print(html_template, end="")
