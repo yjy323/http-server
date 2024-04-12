@@ -31,7 +31,8 @@ class Multiplexer {
   void HandleEvents(int nev, struct kevent events[]);
   void HandleReadEvent(struct kevent event);
   void HandleWriteEvent(struct kevent event);
-  void ReadClientMessage(int client_fd);
+  void HandleCgiEvent(struct kevent event);
+  int ReadClientMessage(int client_fd, std::string& message);
   int AcceptWithClient(int server_fd);
   int RegistKevent(int ident, int16_t filter, uint64_t flags, uint32_t fflags,
                    int64_t data, void* udata);
@@ -40,10 +41,10 @@ class Multiplexer {
   void AddConfInServers(const ServerConfiguration& server_conf);
 
   Server& ServerInstanceByPort(int port);
-  Client& ClientInstanceByFd(int fd);
 
   int server_identifier_;
   int client_identifier_;
+  int cgi_identifier_;
 
   std::vector<Server> servers_;
   std::map<int, Client> clients_;

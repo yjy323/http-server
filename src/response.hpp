@@ -17,8 +17,9 @@ class Response {
                    const LocationConfiguration>::const_iterator LocConfIterator;
 
   enum ResourceType { kFile, kDirectory };
-  Response(Request&, ServerConfiguration&);
+  Response(const Request&, const ServerConfiguration&);
   Response(const Response& obj);
+  Response();
   ~Response();
   Response& operator=(const Response& obj);
 

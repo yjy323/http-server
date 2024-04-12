@@ -14,6 +14,7 @@
 #define EVENT_TIMEOUT_SEC 2
 #define SERVER_IDENTIFIER (1 << 0)
 #define CLIENT_IDENTIFIER (1 << 1)
+#define CGI_IDENTIFIER (1 << 1)
 
 #define KQUEUE_ERROR_MASSAGE "kqueue() failed."
 #define KEVENT_ERROR_MASSAGE "kevent() failed."
@@ -28,6 +29,7 @@
 Multiplexer::Multiplexer()
     : server_identifier_(SERVER_IDENTIFIER),
       client_identifier_(CLIENT_IDENTIFIER),
+      cgi_identifier_(CGI_IDENTIFIER),
       servers_(),
       clients_(),
       kq_(),
@@ -80,7 +82,7 @@ int Multiplexer::Multiplexing() {
   for (std::vector<Server>::const_iterator it = this->servers_.begin();
        it != this->servers_.end(); it++) {
     if (RegistKevent(it->fd(), EVFILT_READ, EV_ADD, 0, 0,
-                     (void*)&server_identifier_) == ERROR)
+                     static_cast<void*>(&this->server_identifier_)) == ERROR)
       return ERROR;
   }
 
@@ -116,6 +118,7 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
     } else if (events[i].filter == EVFILT_WRITE) {
       HandleWriteEvent(events[i]);
     } else if (events[i].filter == EVFILT_PROC) {
+      // HandleCgiEvent(events[i]);
     } else {
       std::cerr << UNDEFINE_FILTER_ERROR_MASSAGE << std::endl;
     }
@@ -127,20 +130,9 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
     AcceptWithClient(event.ident);
   } else if (*static_cast<int*>(event.udata) == client_identifier_) {
     Client& client = this->clients_[event.ident];
-    char buffer[BUFFER_SIZE];
-    ssize_t bytes_read = recv(event.ident, buffer, sizeof(buffer) - 1, 0);
 
-    if (bytes_read == -1) {
-      close(event.ident);
-      this->clients_.erase(event.ident);
-
-      RegistKevent(event.ident, EVFILT_READ, EV_DELETE, 0, 0,
-                   (void*)&client_identifier_);
-      std::cerr << RECV_ERROR_MASSAGE << std::endl;
-
-      return;
-    }
-    buffer[bytes_read] = 0;
+    std::string buffer;
+    if (ReadClientMessage(client.fd(), buffer) == ERROR) return;
 
     client.set_request_str(client.request_str() + buffer);
 
@@ -160,8 +152,9 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
       }
 
       if (IsReadyToSend(event.ident, header_end)) {
+        client.MakeResponse();
         RegistKevent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
-                     (void*)&client_identifier_);
+                     static_cast<void*>(&this->client_identifier_));
       }
     }
   } else {
@@ -170,71 +163,47 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
 }
 
 void Multiplexer::HandleWriteEvent(struct kevent event) {
-  const Client& client = this->clients_[event.ident];
-  Server sk = this->clients_[event.ident].server();
-
-  Request request = this->clients_[event.ident].request();
-  request.uri_.ReconstructTargetUri(request.http_host_);
-
-  ServerConfiguration sc = sk.ConfByHost(request.http_host_);
+  Client& client = this->clients_[event.ident];
 
   std::clog << std::endl << " [ Request Start ] " << std::endl;
   std::clog << client.request_str() << std::endl;
   std::clog << std::endl << " [ Request End ] " << std::endl;
 
-  Response response(request, sc);
-  response.HttpTransaction();
-
   std::clog << std::endl << " [ Response Start ] " << std::endl;
-  std::clog << response.response_message_ << std::endl;
+  std::clog << client.response().response_message_ << std::endl;
   std::clog << std::endl << " [ Response End ] " << std::endl;
 
-  send(event.ident, response.response_message_.c_str(),
-       response.response_message_.size(), 0);
-  std::clog << response.response_message_ << std::endl;
+  std::string response_message = client.response().response_message_;
+  send(client.fd(), response_message.c_str(), response_message.length(), 0);
 }
 
-void Multiplexer::ReadClientMessage(int client_fd) {
+void Multiplexer::HandleCgiEvent(struct kevent event) {
+  (void)event;
+  // // cgi 처리
+  // int pid = -1 /* cgi 처리 */;
+  // RegistKevent(pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, 0, 0,
+  //              static_cast<void*>(&this->cgi_identifier_));
+}
+
+int Multiplexer::ReadClientMessage(int client_fd, std::string& message) {
   char buffer[BUFFER_SIZE];
   ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 
   if (bytes_read == -1) {
-    std::cerr << RECV_ERROR_MASSAGE << std::endl;
-
     close(client_fd);
     this->clients_.erase(client_fd);
 
     RegistKevent(client_fd, EVFILT_READ, EV_DELETE, 0, 0,
-                 (void*)&client_identifier_);
+                 static_cast<void*>(&this->client_identifier_));
+    std::cerr << RECV_ERROR_MASSAGE << std::endl;
 
-    return;
+    return ERROR;
   }
+
   buffer[bytes_read] = 0;
+  message = buffer;
 
-  this->clients_[client_fd].set_request_str(
-      this->clients_[client_fd].request_str() + buffer);
-
-  if (size_t header_end = this->clients_[client_fd].request_str().find(
-                              "\r\n\r\n") != std::string::npos) {
-    ssize_t offset = 0;
-
-    if (this->clients_[client_fd].request_instance().ParseRequestHeader(
-            this->clients_[client_fd].request_str().c_str(),
-            this->clients_[client_fd].request_str().length(),
-            offset) == ERROR) {
-      std::cerr << REQUEST_HEADER_PARSE_ERROR_MASSAGE << std::endl;
-
-      close(client_fd);
-      this->clients_.erase(client_fd);
-
-      return;
-    }
-
-    if (IsReadyToSend(client_fd, header_end)) {
-      RegistKevent(client_fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
-                   (void*)&client_identifier_);
-    }
-  }
+  return OK;
 }
 
 int Multiplexer::AcceptWithClient(int server_fd) {
@@ -263,7 +232,7 @@ int Multiplexer::AcceptWithClient(int server_fd) {
   // client socket fd 관리 추가
   // kqueue에 client socket 등록
   if (RegistKevent(client_fd, EVFILT_READ, EV_ADD, 0, 0,
-                   (void*)&client_identifier_) == ERROR)
+                   static_cast<void*>(&this->client_identifier_)) == ERROR)
     return ERROR;
 
   return OK;
@@ -331,15 +300,4 @@ Server& Multiplexer::ServerInstanceByPort(int port) {
   }
 
   return *this->servers_.end();
-}
-
-Client& Multiplexer::ClientInstanceByFd(int fd) {
-  for (std::map<int, Client>::iterator it = this->clients_.begin();
-       it != this->clients_.end(); it++) {
-    if (it->second.fd() == fd) {
-      return it->second;
-    }
-  }
-
-  return this->clients_.end()->second;
 }

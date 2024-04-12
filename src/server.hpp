@@ -26,7 +26,7 @@ class Server {
   int Close();
   int SetReusable();
 
-  ServerConfiguration ConfByHost(const std::string& host);
+  ServerConfiguration ConfByHost(const std::string& host) const;
 
   std::vector<ServerConfiguration> conf() const;
   int fd() const;
