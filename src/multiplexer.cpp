@@ -124,7 +124,7 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
         Response response(request, sc);
         response.HttpTransaction();
 
-        std::cout << response.response_message_ << std::endl;
+        std::cout << response.response_message_;
         send(events[i].ident, response.response_message_.c_str(),
              response.response_message_.size(), 0);
         /*

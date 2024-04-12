@@ -48,20 +48,31 @@ bool Response::IsAllowedMethod(const char* method) {
 
 int Response::HttpTransaction() {
   this->FindResourceConfiguration();
+  this->response_header_ = "";
+  this->response_body_ = "";
+  this->response_message_ = "";
+  this->status_line_ = "";
 
   request_target_ = this->request_.uri_.request_target_;
   if (request_target_ == this->loc_conf_.return_uri()) {
     // redirect URI
   }
-  target_resource_ =
+  this->target_resource_ =
       "." + this->loc_conf_.root() + this->request_.uri_.request_target_;
 
   if (target_resource_[target_resource_.length() - 1] == '/') {
     this->target_resource_type_ = kDirectory;
+    this->target_resource_extension_ = "";
+
   } else {
     this->target_resource_type_ = kFile;
-  }
 
+    this->target_resource_extension_ =
+        this->target_resource_.substr(this->target_resource_.rfind('.'));
+    if (target_resource_extension_.length() > 0) {
+      target_resource_extension_ = target_resource_extension_.erase(0, 1);
+    }
+  }
   // TODO: 메소드 명 define
   std::string method = this->request_.method_;
   if (method == "GET\0" && IsAllowedMethod("GET\0")) {
@@ -73,76 +84,119 @@ int Response::HttpTransaction() {
   } else {
     return 405;
   }
+
+  SetStatusLine();
+  this->response_message_ = this->status_line_ + this->response_header_ +
+                            "\r\n" + this->response_body_;
   return OK;
 }
 
-std::string ReadFile(const std::string& filename) {
-  std::ifstream file(filename);
-  if (!file.is_open()) {
-    return "File not found.";
+void Response::SetStatusLine() { this->status_line_ = "HTTP/1.1 200 OK\r\n"; }
+
+int Response::SetResponseHeader() {
+  // Server
+  // Date
+  std::time_t datetime = std::time(NULL);
+  this->response_header_ =
+      "Server: Webserv 1.0\r\n"
+      "Date: " +
+      MakeRfc850Time(datetime) + "\r\n" + this->response_header_;
+  return OK;
+}
+
+int Response::GetMimeType() {
+  this->response_header_ += "Content-Type: ";
+  if (this->target_resource_extension_ == "html") {
+    this->response_header_ += "text/html\r\n";
+  } else if (this->target_resource_extension_ == "css") {
+    this->response_header_ += "style/css\r\n";
+  } else {
+    this->response_header_ += "text/plain\r\n";
   }
+  return OK;
+}
+
+int Response::GetStaticFile() {
+  if (access(this->target_resource_.c_str(), F_OK) == -1) {
+    return 404;
+  } else if (access(this->target_resource_.c_str(), R_OK) == -1) {
+    return 403;
+  }
+
+  std::ifstream file(this->target_resource_);
 
   std::ostringstream oss;
   oss << file.rdbuf();
-  return oss.str();
+  this->response_body_ = oss.str();
+
+  struct stat fileInfo;
+  std::time_t modified_time;
+  if (stat(target_resource_.c_str(), &fileInfo) == 0) {
+    modified_time = fileInfo.st_mtime;
+  }
+  this->response_header_ +=
+      "Last-Modified: " + MakeRfc850Time(modified_time) + "\r\n";
+  GetMimeType();
+  this->response_header_ +=
+      "Content-Length: " + std::to_string(this->response_body_.size()) + "\r\n";
+
+  return 200;
+}
+
+int Response::GetCgiScript() {
+  if (access(this->target_resource_.c_str(), F_OK) == -1) {
+    return 404;
+  } else if (access(this->target_resource_.c_str(), X_OK | W_OK | R_OK) == -1) {
+    return 403;
+  }
+
+  std::ifstream file(this->target_resource_);
+  struct stat fileInfo;
+  std::time_t modified_time;
+  if (stat(target_resource_.c_str(), &fileInfo) == 0) {
+    modified_time = fileInfo.st_mtime;
+  }
+  this->response_header_ +=
+      "Last-Modified: " + MakeRfc850Time(modified_time) + "\r\n";
+  Cgi::ExecuteCgi(this->target_resource_.c_str(),
+                  this->target_resource_extension_, *this);
+  return OK;
 }
 
 int Response::HttpGetMethod() {
   if (this->target_resource_type_ == kDirectory) {
     // index
     // autoindex
-    // 403
+    return 403;
+  } else if (Cgi::IsSupportedCgi(this->target_resource_extension_)) {
+    GetCgiScript();
+    SetResponseHeader();
+    return OK;
   } else {
-    // CGI
-    std::string extension =
-        this->target_resource_.substr(this->target_resource_.rfind('.'));
-    if (extension.length() > 0) {
-      extension = extension.erase(0, 1);
-    }
-
-    if (extension == ".py") {
-    } else {
-      // Server
-      // Content-Length
-      // Content-Type
-      // Date
-      // Last-Modified
-
-      std::time_t datetime = std::time(NULL);
-      struct stat fileInfo;
-
-      std::time_t modified_time;
-      if (stat(target_resource_.c_str(), &fileInfo) == 0) {
-        modified_time = fileInfo.st_mtime;
-      }
-
-      std::string status_line = "HTTP/1.1 200 OK\r\n";
-      std::string content = ReadFile(target_resource_);
-      status_line += "Server: Webserv\r\n";
-      status_line +=
-          "Content-Length: " + std::to_string(content.length()) + "\r\n";
-      status_line += "Content-Type: text/" + extension + "\r\n";
-      status_line += "Date: " + MakeRfc850Time(datetime) + "\r\n";
-      status_line += "Last-Modified: " + MakeRfc850Time(modified_time) + "\r\n";
-      status_line += "\r\n" + content;
-
-      response_message_ = status_line;
-    }
+    GetStaticFile();
+    SetResponseHeader();
+    return OK;
   }
-  return OK;
 }
+
 int Response::HttpPostMethod() {
   if (this->target_resource_type_ == kDirectory) {
-    // Upload File
-    // 403
+    return 403;
+  } else if (Cgi::IsSupportedCgi(target_resource_extension_)) {
+    GetCgiScript();
+    return OK;
   } else {
-    // CGI
-    // 404
+    return 403;
   }
-  return OK;
 }
+
 int Response::HttpDeleteMethod() {
-  // DELETE
-  // 200 201
-  return OK;
+  if (access(this->target_resource_.c_str(), F_OK) == -1) {
+    return 204;
+  } else if (access(this->target_resource_.c_str(), W_OK | X_OK) == -1) {
+    return 403;
+  } else {
+    std::remove(this->target_resource_.c_str());
+    return OK;
+  }
 }
