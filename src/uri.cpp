@@ -44,7 +44,6 @@ Uri& Uri::operator=(const Uri& obj) {
     this->request_target_ = obj.request_target_;
     this->scheme_ = obj.scheme_;
     this->host_ = obj.host_;
-    this->port_ = obj.port_;
     this->path_ = obj.path_;
     this->query_string_ = obj.query_string_;
   }
@@ -84,23 +83,9 @@ int Uri::ParseAuthority(std::string& authority) {
     return HTTP_BAD_REQUEST;
   }
 
-  delimiter_pos = authority.find(':');
-  if (delimiter_pos != std::string::npos) {
-    // port = *DIGIT
-    sub_component = authority.substr(delimiter_pos + 1);
-    long port = strtol(sub_component.c_str(), &end_ptr, 10);
-    if (end_ptr == sub_component || *end_ptr != 0 || port < 0 || port > 65535) {
-      return HTTP_BAD_REQUEST;
-    }
-    this->port_ = port;
-
-    authority = authority.substr(0, delimiter_pos);
-  }
-
-  if (!Abnf::IsHost(authority)) {
+  if (!IsHost(authority)) {
     return HTTP_BAD_REQUEST;
   }
-
   this->host_ = authority;
   return HTTP_OK;
 }
@@ -120,7 +105,7 @@ int Uri::ParsePathSegment(std::string& path_segment) {
 
     switch (c) {
       case '%':
-        if (!Abnf::IsPctEncoded(path_segment, i)) {
+        if (!IsPctEncoded(path_segment, i)) {
           return HTTP_BAD_REQUEST;
         }
       case '/':
@@ -130,7 +115,7 @@ int Uri::ParsePathSegment(std::string& path_segment) {
       case '@':
         break;
       default:
-        if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
+        if (!IsUnreserved(c) && !IsSubDlims(c)) {
           return HTTP_BAD_REQUEST;
         }
         break;
@@ -151,7 +136,7 @@ int Uri::ParseQuery(std::string& query) {
     char c = query[i];
     switch (c) {
       case '%':
-        if (!Abnf::IsPctEncoded(query, i)) {
+        if (!IsPctEncoded(query, i)) {
           return HTTP_BAD_REQUEST;
         }
       case '&':
@@ -162,7 +147,7 @@ int Uri::ParseQuery(std::string& query) {
       case '?':
         break;
       default:
-        if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
+        if (!IsUnreserved(c) && !IsSubDlims(c)) {
           return HTTP_BAD_REQUEST;
         }
         break;

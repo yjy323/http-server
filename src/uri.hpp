@@ -47,7 +47,6 @@ class Uri {
   std::string user_;
   std::string password_;
   std::string host_;
-  int port_;
   std::string path_;
   std::string query_string_;
 };
