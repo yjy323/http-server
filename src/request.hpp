@@ -10,6 +10,7 @@
 
 #include "abnf.hpp"
 #include "core.hpp"
+#include "http.hpp"
 #include "uri.hpp"
 #include "utils.hpp"
 

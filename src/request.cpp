@@ -24,10 +24,10 @@ int Request::ParseMethod(std::string& method) {
   // method = token
 
   if (method.length() == 0 || !Abnf::IsToken(method)) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
   this->method_ = method;
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ParseRequestTarget(std::string& request_target) {
@@ -41,37 +41,38 @@ int Request::ParseHttpVersion(std::string& http_version) {
           HTTP-name = %s"HTTP"
   */
   if (http_version != "HTTP/1.1" && http_version != "HTTP/1.0") {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 
   this->major_version_ = 1;
   this->minor_version_ = 1;
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ParseRequestLine(std::string& request_line) {
   std::vector<std::string> request_line_component = Split(request_line, ' ');
   if (request_line_component.size() != 3) {
-    return ERROR;
-  } else if (ParseMethod(request_line_component[0]) == ERROR ||
-             ParseRequestTarget(request_line_component[1]) == ERROR ||
-             ParseHttpVersion(request_line_component[2]) == ERROR) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
+  } else if (ParseMethod(request_line_component[0]) == HTTP_BAD_REQUEST ||
+             ParseRequestTarget(request_line_component[1]) ==
+                 HTTP_BAD_REQUEST ||
+             ParseHttpVersion(request_line_component[2]) == HTTP_BAD_REQUEST) {
+    return HTTP_BAD_REQUEST;
   }
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ParseCombinedFieldValue(std::string& field_name,
                                      std::string& combined_field_value) {
   if (field_name == "host") {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   } else if (field_name == "content-length") {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   } else if (field_name == "transfer-encoding") {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
   this->headers_[field_name] = combined_field_value;
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ParseFieldValue(std::string& field_line) {
@@ -90,13 +91,13 @@ int Request::ParseFieldValue(std::string& field_line) {
   std::string field_value;
   size_t delimiter_pos = field_line.find(':');
   if (delimiter_pos == std::string::npos) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 
   field_name = field_line.substr(0, delimiter_pos);
   field_name = ToCaseInsensitive(field_name);
   if (field_name.length() == 0 || !Abnf::IsToken(field_name)) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 
   field_value = Trim(field_line.substr(delimiter_pos + 1));
@@ -105,20 +106,21 @@ int Request::ParseFieldValue(std::string& field_line) {
     if (Abnf::IsVchar(c) || Abnf::IsObsText(c) || Abnf::IsWhiteSpace(c)) {
       continue;
     } else {
-      return ERROR;
+      return HTTP_BAD_REQUEST;
     }
   }
 
   HeadersIterator field_iter = this->headers_.find(field_name);
   if (field_iter != this->headers_.end()) {
     std::string combined_field_value = field_iter->second + ", " + field_value;
-    if (ParseCombinedFieldValue(field_name, combined_field_value) == ERROR) {
-      return ERROR;
+    if (ParseCombinedFieldValue(field_name, combined_field_value) ==
+        HTTP_BAD_REQUEST) {
+      return HTTP_BAD_REQUEST;
     }
   } else {
     this->headers_.insert(std::make_pair(field_name, field_value));
   }
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ValidateHttpHostHeader(HeadersIterator& end) {
@@ -127,7 +129,7 @@ int Request::ValidateHttpHostHeader(HeadersIterator& end) {
 
   HeadersIterator it = this->headers_.find("host");
   if (it == end) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   } else {
     field_value = it->second;
     this->http_host_ = field_value;
@@ -142,17 +144,17 @@ int Request::ValidateHttpHostHeader(HeadersIterator& end) {
       long port = strtol(sub_component.c_str(), &end_ptr, 10);
       if (end_ptr == sub_component || *end_ptr != 0 || port < 0 ||
           port > 65535) {
-        return ERROR;
+        return HTTP_BAD_REQUEST;
       }
 
       field_value = field_value.substr(0, delimiter_pos);
     }
     if (field_value.length() == 0 || !Abnf::IsHost(field_value)) {
-      return this->status_code_ = ERROR;
+      return this->status_code_ = HTTP_BAD_REQUEST;
     }
   }
 
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ValidateHttpTransferEncodingHeader(HeadersIterator& end) {
@@ -172,18 +174,18 @@ int Request::ValidateHttpTransferEncodingHeader(HeadersIterator& end) {
       token = token.substr(0, token.find(';'));
       token = ToCaseInsensitive(token);
       if (!Abnf::IsToken(token)) {
-        return ERROR;
+        return HTTP_BAD_REQUEST;
       } else if (token != "chunked") {
         // chunked 외의 전송 코딩은 지원하지 않는다.
         // 확장성을 위해 vector<string transfer-coding>으로 관리한다.
-        return 501;
+        return HTTP_NOT_IMPLEMENTED;
       } else {
         chunked_encoding_signal_ = true;
         this->http_transfer_encoding_.push_back(token);
       }
     }
   }
-  return OK;
+  return HTTP_OK;
 }
 int Request::ValidateHttpContentLengthHeader(HeadersIterator& end) {
   HeadersIterator it = this->headers_.find("content-length");
@@ -194,22 +196,22 @@ int Request::ValidateHttpContentLengthHeader(HeadersIterator& end) {
     field_value = it->second;
     long content_length = strtol(field_value.c_str(), &end_ptr, 10);
     if (end_ptr == field_value || *end_ptr != 0) {
-      return ERROR;
+      return HTTP_BAD_REQUEST;
     }
     this->http_content_length_ = content_length;
   }
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ValidateStandardHttpHeader() {
   HeadersIterator end = this->headers_.end();
 
-  if (ValidateHttpHostHeader(end) == ERROR ||
-      ValidateHttpTransferEncodingHeader(end) == ERROR ||
-      ValidateHttpContentLengthHeader(end) == ERROR) {
-    return ERROR;
+  if (ValidateHttpHostHeader(end) == HTTP_BAD_REQUEST ||
+      ValidateHttpTransferEncodingHeader(end) == HTTP_BAD_REQUEST ||
+      ValidateHttpContentLengthHeader(end) == HTTP_BAD_REQUEST) {
+    return HTTP_BAD_REQUEST;
   }
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::ParseRequestHeader(const char* buff, ssize_t size,
@@ -235,8 +237,8 @@ int Request::ParseRequestHeader(const char* buff, ssize_t size,
         if (line.empty()) {
           continue;
         } else {
-          if (this->ParseRequestLine(line) != OK) {
-            return this->status_code_ = ERROR;
+          if (this->ParseRequestLine(line) != HTTP_OK) {
+            return this->status_code_ = HTTP_BAD_REQUEST;
           }
           start_line_flag = false;
         }
@@ -244,18 +246,18 @@ int Request::ParseRequestHeader(const char* buff, ssize_t size,
         if (line.empty()) {
           break;
         } else {
-          if (this->ParseFieldValue(line) != OK) {
-            return this->status_code_ = ERROR;
+          if (this->ParseFieldValue(line) != HTTP_OK) {
+            return this->status_code_ = HTTP_BAD_REQUEST;
           }
         }
       }
     }
   }
 
-  if (this->ValidateStandardHttpHeader() != OK) {
+  if (this->ValidateStandardHttpHeader() != HTTP_OK) {
     return this->status_code_;
   }
-  return OK;
+  return HTTP_OK;
 }
 
 // int Request::DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset)
@@ -270,24 +272,24 @@ int Request::ParseRequestBody(char* buff, ssize_t size, ssize_t& offset) {
       if (Abnf::IsOctet(c)) {
         ss << c;
       } else {
-        return this->status_code_ = ERROR;
+        return this->status_code_ = HTTP_BAD_REQUEST;
       }
     }
     this->body_ += ss.str();
   }
-  return OK;
+  return HTTP_OK;
 }
 
 int Request::RequestMessage(char* buff, ssize_t& size) {
   ssize_t offset = 0;
-  if (ParseRequestHeader(buff, size, offset) != OK) {
+  if (ParseRequestHeader(buff, size, offset) != HTTP_OK) {
     return this->status_code_;
   }
 
   if (chunked_encoding_signal_ & (http_content_length_ > -1)) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   } else if (chunked_encoding_signal_ | (http_content_length_ > -1)) {
-    if (ParseRequestBody(buff, size, ++offset) != OK) {
+    if (ParseRequestBody(buff, size, ++offset) != HTTP_OK) {
       return this->status_code_;
     }
   }

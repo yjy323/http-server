@@ -118,9 +118,8 @@ int Cgi::ExecuteCgi(const char* cgi_path, const std::string& extension,
     close(orig_stdout);
 
     response.response_header_ +=
-        cgi_response.substr(0, cgi_response.find("\r\n\r\n") + 4);
-    response.response_body_ +=
-        cgi_response.substr(cgi_response.find("\r\n\r\n") + 4);
+        cgi_response.substr(0, cgi_response.find(CRLF) + 4);
+    response.response_body_ += cgi_response.substr(cgi_response.find(CRLF) + 4);
   }
 
   return 0;

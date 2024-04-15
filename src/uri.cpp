@@ -1,8 +1,8 @@
 #include "uri.hpp"
 
 // 임시
-#define OK 0
-#define ERROR 1
+#define HTTP_OK 0
+#define HTTP_BAD_REQUEST 1
 
 /*
         uri.cpp에 사용되는 비멤버 함수
@@ -28,7 +28,7 @@ int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
     }
     return (uri.*Parser)(sub_component);
   }
-  return OK;
+  return HTTP_OK;
 }
 
 /*
@@ -62,13 +62,13 @@ int Uri::ParseScheme(std::string& scheme) {
       if (std::isalnum(c) || c == '+' || c == '-' || c == '.') {
         continue;
       } else {
-        return ERROR;
+        return HTTP_BAD_REQUEST;
       }
     }
     this->scheme_ = scheme;
-    return OK;
+    return HTTP_OK;
   } else {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 }
 
@@ -81,7 +81,7 @@ int Uri::ParseAuthority(std::string& authority) {
   delimiter_pos = authority.find('@');
   if (delimiter_pos != std::string::npos) {
     // 보안 정책 상 userinfo를 포함한 요청을 모두 거부한다.
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 
   delimiter_pos = authority.find(':');
@@ -90,7 +90,7 @@ int Uri::ParseAuthority(std::string& authority) {
     sub_component = authority.substr(delimiter_pos + 1);
     long port = strtol(sub_component.c_str(), &end_ptr, 10);
     if (end_ptr == sub_component || *end_ptr != 0 || port < 0 || port > 65535) {
-      return ERROR;
+      return HTTP_BAD_REQUEST;
     }
     this->port_ = port;
 
@@ -98,11 +98,11 @@ int Uri::ParseAuthority(std::string& authority) {
   }
 
   if (!Abnf::IsHost(authority)) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 
   this->host_ = authority;
-  return OK;
+  return HTTP_OK;
 }
 
 int Uri::ParsePathSegment(std::string& path_segment) {
@@ -121,7 +121,7 @@ int Uri::ParsePathSegment(std::string& path_segment) {
     switch (c) {
       case '%':
         if (!Abnf::IsPctEncoded(path_segment, i)) {
-          return ERROR;
+          return HTTP_BAD_REQUEST;
         }
       case '/':
       case ';':
@@ -131,13 +131,13 @@ int Uri::ParsePathSegment(std::string& path_segment) {
         break;
       default:
         if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
-          return ERROR;
+          return HTTP_BAD_REQUEST;
         }
         break;
     }
   }
   this->path_ = path_segment;
-  return OK;
+  return HTTP_OK;
 }
 
 int Uri::ParseQuery(std::string& query) {
@@ -152,7 +152,7 @@ int Uri::ParseQuery(std::string& query) {
     switch (c) {
       case '%':
         if (!Abnf::IsPctEncoded(query, i)) {
-          return ERROR;
+          return HTTP_BAD_REQUEST;
         }
       case '&':
       case '=':
@@ -163,12 +163,12 @@ int Uri::ParseQuery(std::string& query) {
         break;
       default:
         if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
-          return ERROR;
+          return HTTP_BAD_REQUEST;
         }
         break;
     }
   }
-  return OK;
+  return HTTP_OK;
 }
 
 int Uri::ParseUriComponent(std::string& request_uri) {
@@ -182,36 +182,37 @@ int Uri::ParseUriComponent(std::string& request_uri) {
                 absolute-path = 1*( "/" segment )
    */
 
-  // todo - request_uri 존재 여부는 상위 레벨에서 처리되어야 할 것 같다.
+  // todo - request_uri 존재 여부는 상위 레벨에서 처리되어야 할 것 같다.`
   if (request_uri.length() == 0) {
-    return ERROR;
+    return HTTP_BAD_REQUEST;
   }
 
-  if (ParseSubComponent(*this, &Uri::ParseQuery, request_uri, "?") == ERROR) {
-    return ERROR;
+  if (ParseSubComponent(*this, &Uri::ParseQuery, request_uri, "?") ==
+      HTTP_BAD_REQUEST) {
+    return HTTP_BAD_REQUEST;
   }
 
   if (request_uri[0] != '/') {
     // absolute-form
     request_target_form_ = kAbsoluteForm;
     if (ParseSubComponent(*this, &Uri::ParseScheme, request_uri, "://") ==
-            ERROR ||
+            HTTP_BAD_REQUEST ||
         ParseSubComponent(*this, &Uri::ParseAuthority, request_uri, "/") ==
-            ERROR ||
+            HTTP_BAD_REQUEST ||
         this->scheme_ == "" || this->host_ == "") {
-      return ERROR;
+      return HTTP_BAD_REQUEST;
     }
   } else {
     // origin-form
     request_target_form_ = kOriginForm;
-    request_uri.erase(0, 1);
   }
 
-  if (request_uri.size() == 0 || ParsePathSegment(request_uri) == ERROR) {
-    return ERROR;
+  if (request_uri.size() == 0 ||
+      ParsePathSegment(request_uri) == HTTP_BAD_REQUEST) {
+    return HTTP_BAD_REQUEST;
   }
 
-  return OK;
+  return HTTP_OK;
 }
 
 int Uri::ReconstructTargetUri(std::string& request_host) {
@@ -220,6 +221,6 @@ int Uri::ReconstructTargetUri(std::string& request_host) {
     this->host_ = request_host;
   }
 
-  this->request_target_ = "/" + this->path_;
-  return OK;
+  this->request_target_ = this->path_;
+  return HTTP_OK;
 }

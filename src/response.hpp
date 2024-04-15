@@ -31,6 +31,8 @@ class Response {
   int HttpPostMethod();
   int HttpDeleteMethod();
 
+  void SetResponseMessage();
+  void SetTargetResource();
   void SetStatusLine();
   int SetResponseHeader();
 
@@ -49,6 +51,7 @@ class Response {
   std::string target_resource_extension_;
   ResourceType target_resource_type_;
 
+  int status_code_;
   std::string status_line_;
   std::string response_header_;
   std::string response_body_;
