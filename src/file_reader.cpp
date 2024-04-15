@@ -1,15 +1,20 @@
 #include "file_reader.hpp"
 
+#include <iostream>
 #include <sstream>
+
+#define ERROR_MESSAGE "can not open the configuration file"
 
 FileReader::~FileReader() {}
 
-int FileReader::readFile(const std::string& filePath, std::string& contents) {
+int FileReader::ReadFile(const std::string& filePath, std::string& contents) {
   std::ifstream fileStream(filePath.c_str());
   std::ostringstream buffer;
 
   if (!fileStream.is_open()) {
     return ERROR;
+
+    std::cerr << ERROR_MESSAGE << std::endl;
   };
 
   buffer << fileStream.rdbuf();

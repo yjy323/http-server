@@ -33,13 +33,11 @@ int main(const int argc, const char* argv[]) {
 int parseConfig(const char* fileName, Configuration& configuration) {
   std::string contents;
 
-  if (FileReader::readFile(fileName, contents) == ERROR) {
-    std::cerr << "Error: can not open the configuration file" << std::endl;
+  if (FileReader::ReadFile(fileName, contents) == ERROR) {
     return ERROR;
   };
 
-  if (ConfigurationParser::parse(contents, configuration) == ERROR) {
-    std::cerr << "Error: can not parse the configuration file" << std::endl;
+  if (ConfigurationParser::Parse(contents, configuration) == ERROR) {
     return ERROR;
   }
 

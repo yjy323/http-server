@@ -103,6 +103,7 @@ int Multiplexer::StartServer() {
 
     std::clog << "event 대기상태 진입" << std::endl;
     if (PollingEvent(events, nev) == ERROR) continue;
+    if (events->flags & EV_ERROR) CloseWithClient(events[nev].ident);
     HandleEvents(nev, events);
   }
 }
@@ -136,9 +137,15 @@ void Multiplexer::HandleEvents(int nev, struct kevent events[]) {
     } else if (events[i].filter == EVFILT_WRITE) {
       std::clog << "[event type] WRITE" << std::endl;
       HandleWriteEvent(events[i]);
+      // CloseWithClient(events[i].ident);
     } else if (events[i].filter == EVFILT_PROC) {
       std::clog << "[event type] PROC" << std::endl;
       // HandleCgiEvent(events[i]);
+    } else if (events[i].filter == EVFILT_TIMER) {
+      std::clog << "[event type] TIMER" << std::endl;
+      RegistKevent(events[i].ident, EVFILT_READ, EV_DELETE, 0, 0,
+                   static_cast<void*>(&this->client_udata_));
+      CloseWithClient(events[i].ident);
     } else {
       std::cerr << UNDEFINE_FILTER_ERROR_MASSAGE << std::endl;
     }
@@ -170,8 +177,10 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
               offset) == ERROR) {
         std::cerr << REQUEST_HEADER_PARSE_ERROR_MASSAGE << std::endl;
 
-        close(event.ident);
-        this->clients_.erase(event.ident);
+        std::clog << "[ Parse Error Request ]" << std::endl
+                  << client.request_str() << std::endl;
+
+        CloseWithClient(client.fd());
 
         return;
       }
@@ -184,8 +193,8 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
         std::clog << std::endl << " [ Full Request End ] " << std::endl;
 
         client.MakeResponse();
-        RegistKevent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0,
-                     static_cast<void*>(&this->client_udata_));
+        RegistKevent(event.ident, EVFILT_WRITE, EV_ADD | EV_ONESHOT,
+                     NOTE_SECONDS, 0, static_cast<void*>(&this->client_udata_));
       }
     }
   } else {
@@ -217,11 +226,11 @@ int Multiplexer::ReadClientMessage(int client_fd, std::string& message) {
   ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 
   if (bytes_read == -1) {
-    close(client_fd);
-    this->clients_.erase(client_fd);
+    CloseWithClient(client_fd);
 
     RegistKevent(client_fd, EVFILT_READ, EV_DELETE, 0, 0,
                  static_cast<void*>(&this->client_udata_));
+    RegistKevent(client_fd, EVFILT_TIMER, EV_DELETE, 0, 0, NULL);
     std::cerr << RECV_ERROR_MASSAGE << std::endl;
 
     return ERROR;
@@ -258,12 +267,23 @@ int Multiplexer::AcceptWithClient(int server_fd) {
 
   // client socket fd 관리 추가
   // kqueue에 client socket 등록
-  if (RegistKevent(client_fd, EVFILT_READ, EV_ADD, 0, 0,
-                   static_cast<void*>(&this->client_udata_)) == ERROR)
+  if ((RegistKevent(client_fd, EVFILT_READ, EV_ADD, 0, 0,
+                    static_cast<void*>(&this->client_udata_)) == ERROR) ||
+      (RegistKevent(client_fd, EVFILT_TIMER, EV_ONESHOT | NOTE_SECONDS, 0, 5000,
+                    static_cast<void*>(&this->client_udata_)) == ERROR))
     return ERROR;
 
   std::clog << "client[ fd: " << client_fd << "] 성공적으로 connect"
             << std::endl;
+
+  return OK;
+}
+
+int Multiplexer::CloseWithClient(int client_fd) {
+  close(client_fd);
+  this->clients_.erase(client_fd);
+
+  std::clog << "closed with [fd: " << client_fd << "]" << std::endl;
 
   return OK;
 }

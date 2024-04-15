@@ -1,11 +1,23 @@
 #include "configuration_parser.hpp"
 
-#include <fcntl.h>
-
-#include <fstream>
-#include <sstream>
-
 #include "file_reader.hpp"
+
+#define DEFAULT_PORT 8080
+#define DEFAULT_SERVER_NAMES ConfigurationParser::getDefaultServerName()
+#define DEFAULT_LOCATION \
+  std::map<std::string, ServerConfiguration::LocationConfiguration>()
+#define DEFAULT_ERROR_PAGE std::map<int, std::string>()
+#define DEFAULT_CLIENT_MAX_BODY_SIZE "1M"
+#define DEFAULT_SERVER_ROOT "/www/static"
+#define DEFAULT_AUTO_INDEX false
+#define DEFAULT_INDEX "index.html"
+#define DEFAULT_ALLOWED_METHOD ConfigurationParser::getDefaultAllowedMethod()
+#define DEFAULT_RETURN_URI ""
+#define DEFAULT_UPLOAD_STORE "/upload"
+
+#define PARSE_ERROR_MESSAGE "an not parse the configuration file"
+#define PORT_HOST_VALID_ERROR_MESSAGE \
+  "The combination of the server's port and server_name must be unique."
 
 const std::string ConfigurationParser::COMMENT_TOKEN = "#";
 const std::string ConfigurationParser::END_TOKEN = ";";
@@ -14,21 +26,27 @@ const std::string ConfigurationParser::CLOSE_BLOCK_TOKEN = "}";
 
 ConfigurationParser::~ConfigurationParser() {}
 
-int ConfigurationParser::parse(const std::string& contents,
+int ConfigurationParser::Parse(const std::string& contents,
                                Configuration& configuration) {
   std::string contents_copy(contents);
   Tokens tokens;
 
-  if (eraseComment(contents_copy) == ERROR ||
-      tokenize(contents_copy, tokens) == ERROR ||
-      parse(tokens, configuration) == ERROR) {
+  if (EraseComment(contents_copy) == ERROR ||
+      Tokenize(contents_copy, tokens) == ERROR ||
+      Parse(tokens, configuration) == ERROR) {
+    std::cerr << PARSE_ERROR_MESSAGE << std::endl;
+
+    return ERROR;
+  }
+
+  if (ValidConfiguration(configuration) == ERROR) {
     return ERROR;
   }
 
   return OK;
 }
 
-int ConfigurationParser::eraseComment(std::string& contents) {
+int ConfigurationParser::EraseComment(std::string& contents) {
   size_t pos = 0;
 
   while ((pos = contents.find(COMMENT_TOKEN, pos)) != std::string::npos) {
@@ -45,7 +63,7 @@ int ConfigurationParser::eraseComment(std::string& contents) {
   return OK;
 }
 
-int ConfigurationParser::tokenize(const std::string& str,
+int ConfigurationParser::Tokenize(const std::string& str,
                                   ConfigurationParser::Tokens& tokens) {
   Token token;
 
@@ -80,7 +98,7 @@ int ConfigurationParser::tokenize(const std::string& str,
   return OK;
 }
 
-int ConfigurationParser::parse(const Tokens& tokens,
+int ConfigurationParser::Parse(const Tokens& tokens,
                                Configuration& configuration) {
   Tokens serverTokens;
   uint64_t contextDepth = 0;
@@ -111,7 +129,7 @@ int ConfigurationParser::parse(const Tokens& tokens,
       if (contextDepth == 0) {
         ServerConfiguration serverConfiguration;
 
-        if (parseServer(serverTokens, serverConfiguration) == ERROR)
+        if (ParseServer(serverTokens, serverConfiguration) == ERROR)
           return ERROR;
 
         configuration.push_back(serverConfiguration);
@@ -130,17 +148,17 @@ int ConfigurationParser::parse(const Tokens& tokens,
   return OK;
 }
 
-int ConfigurationParser::parseServer(const Tokens& tokens,
+int ConfigurationParser::ParseServer(const Tokens& tokens,
                                      ServerConfiguration& serverConfiguration) {
-  int port;
-  std::set<const std::string> server_names;
-  std::map<const std::string, const ServerConfiguration::LocationConfiguration>
-      location;
-  std::map<const int, const std::string> error_page;
-  std::string client_max_body_size;
-  std::string root;
-  bool auto_index;
-  std::string index;
+  int port = DEFAULT_PORT;
+  std::set<std::string> server_names;
+  std::map<std::string, ServerConfiguration::LocationConfiguration> location =
+      DEFAULT_LOCATION;
+  std::map<int, std::string> error_page = DEFAULT_ERROR_PAGE;
+  std::string client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
+  std::string root = DEFAULT_SERVER_ROOT;
+  bool auto_index = DEFAULT_AUTO_INDEX;
+  std::string index = DEFAULT_INDEX;
 
   std::map<std::string, Tokens> locationTokenByPath;
   std::string locationPath;
@@ -162,7 +180,7 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
         continue;
       }
       if (directive == "") continue;
-      if (parseServerLine(directive, valueTokens, port, server_names,
+      if (ParseServerLine(directive, valueTokens, port, server_names,
                           error_page, client_max_body_size, root, auto_index,
                           index) == ERROR)
         return ERROR;
@@ -225,12 +243,14 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
            locationTokenByPath.begin();
        iter != locationTokenByPath.end(); iter++) {
     ServerConfiguration::LocationConfiguration locationConfiguration;
-    if (parseLocation(iter->second, serverConfigurationForLocation,
+    if (ParseLocation(iter->second, serverConfigurationForLocation,
                       locationConfiguration) == ERROR)
       return ERROR;
 
     location.insert(std::make_pair(iter->first, locationConfiguration));
   }
+
+  if (server_names.size() == 0) server_names = DEFAULT_SERVER_NAMES;
 
   serverConfiguration =
       ServerConfiguration(port, server_names, location, error_page,
@@ -239,18 +259,17 @@ int ConfigurationParser::parseServer(const Tokens& tokens,
   return OK;
 }
 
-int ConfigurationParser::parseLocation(
+int ConfigurationParser::ParseLocation(
     const Tokens& tokens, const ServerConfiguration& serverConfiguration,
     ServerConfiguration::LocationConfiguration& locationConfiguartion) {
-  std::map<const int, const std::string> error_page =
-      serverConfiguration.error_page();
+  std::map<int, std::string> error_page = serverConfiguration.error_page();
   std::string client_max_body_size = serverConfiguration.client_max_body_size();
   std::string root = serverConfiguration.root();
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
-  std::set<const std::string> allowed_method;
-  std::string return_uri;
-  std::string upload_store;
+  std::set<std::string> allowed_method;
+  std::string return_uri = DEFAULT_RETURN_URI;
+  std::string upload_store = DEFAULT_UPLOAD_STORE;
 
   Token directive;
   Tokens valueTokens;
@@ -259,7 +278,7 @@ int ConfigurationParser::parseLocation(
     const Token token = tokens[idx];
 
     if (token == END_TOKEN) {
-      if (parseLocationLine(directive, valueTokens, error_page,
+      if (ParseLocationLine(directive, valueTokens, error_page,
                             client_max_body_size, root, auto_index, index,
                             allowed_method, return_uri, upload_store) == ERROR)
         return ERROR;
@@ -280,6 +299,8 @@ int ConfigurationParser::parseLocation(
 
   if (directive != "") return ERROR;
 
+  if (allowed_method.size() == 0) allowed_method = DEFAULT_ALLOWED_METHOD;
+
   locationConfiguartion = ServerConfiguration::LocationConfiguration(
       error_page, client_max_body_size, root, auto_index, index, allowed_method,
       return_uri, upload_store);
@@ -287,28 +308,29 @@ int ConfigurationParser::parseLocation(
   return OK;
 }
 
-int ConfigurationParser::parseServerLine(
-    const Token& directive, const Tokens& valueTokens, int& port,
-    std::set<const std::string>& server_names,
-    std::map<const int, const std::string>& error_page,
-    std::string& client_max_body_size, std::string& root, bool& auto_index,
-    std::string& index) {
+int ConfigurationParser::ParseServerLine(const Token& directive,
+                                         const Tokens& valueTokens, int& port,
+                                         std::set<std::string>& server_names,
+                                         std::map<int, std::string>& error_page,
+                                         std::string& client_max_body_size,
+                                         std::string& root, bool& auto_index,
+                                         std::string& index) {
   int rtn_parse = OK;
 
   if (directive == "listen") {
-    rtn_parse = parsePort(port, valueTokens);
+    rtn_parse = ParsePort(port, valueTokens);
   } else if (directive == "server_name") {
-    rtn_parse = parseServer_names(server_names, valueTokens);
+    rtn_parse = ParseServer_names(server_names, valueTokens);
   } else if (directive == "error_page") {
-    rtn_parse = parseError_page(error_page, valueTokens);
+    rtn_parse = ParseError_page(error_page, valueTokens);
   } else if (directive == "client_max_body_size") {
-    rtn_parse = parseClient_max_body_size(client_max_body_size, valueTokens);
+    rtn_parse = ParseClient_max_body_size(client_max_body_size, valueTokens);
   } else if (directive == "root") {
-    rtn_parse = parseRoot(root, valueTokens);
+    rtn_parse = ParseRoot(root, valueTokens);
   } else if (directive == "auto_index") {
-    rtn_parse = parseAuto_index(auto_index, valueTokens);
+    rtn_parse = ParseAuto_index(auto_index, valueTokens);
   } else if (directive == "index") {
-    rtn_parse = parseIndex(index, valueTokens);
+    rtn_parse = ParseIndex(index, valueTokens);
   } else {
     return ERROR;
   }
@@ -316,30 +338,30 @@ int ConfigurationParser::parseServerLine(
   return rtn_parse;
 }
 
-int ConfigurationParser::parseLocationLine(
+int ConfigurationParser::ParseLocationLine(
     const Token& directive, const Tokens& valueTokens,
-    std::map<const int, const std::string>& error_page,
-    std::string& client_max_body_size, std::string& root, bool& auto_index,
-    std::string& index, std::set<const std::string>& allowed_method,
-    std::string& return_uri, std::string& upload_store) {
+    std::map<int, std::string>& error_page, std::string& client_max_body_size,
+    std::string& root, bool& auto_index, std::string& index,
+    std::set<std::string>& allowed_method, std::string& return_uri,
+    std::string& upload_store) {
   int rtn_parse = OK;
 
   if (directive == "error_page") {
-    rtn_parse = parseError_page(error_page, valueTokens);
+    rtn_parse = ParseError_page(error_page, valueTokens);
   } else if (directive == "client_max_body_size") {
-    rtn_parse = parseClient_max_body_size(client_max_body_size, valueTokens);
+    rtn_parse = ParseClient_max_body_size(client_max_body_size, valueTokens);
   } else if (directive == "root") {
-    rtn_parse = parseRoot(root, valueTokens);
+    rtn_parse = ParseRoot(root, valueTokens);
   } else if (directive == "auto_index") {
-    rtn_parse = parseAuto_index(auto_index, valueTokens);
+    rtn_parse = ParseAuto_index(auto_index, valueTokens);
   } else if (directive == "index") {
-    rtn_parse = parseIndex(index, valueTokens);
+    rtn_parse = ParseIndex(index, valueTokens);
   } else if (directive == "allowed_method") {
-    rtn_parse = parseAllowed_method(allowed_method, valueTokens);
+    rtn_parse = ParseAllowed_method(allowed_method, valueTokens);
   } else if (directive == "return") {
-    rtn_parse = parseReturn_uri(return_uri, valueTokens);
+    rtn_parse = ParseReturn_uri(return_uri, valueTokens);
   } else if (directive == "upload_store") {
-    rtn_parse = parseUpload_store(upload_store, valueTokens);
+    rtn_parse = ParseUpload_store(upload_store, valueTokens);
   } else {
     return ERROR;
   }
@@ -347,17 +369,17 @@ int ConfigurationParser::parseLocationLine(
   return rtn_parse;
 }
 
-int ConfigurationParser::parsePort(int& port, const Tokens& valueTokens) {
+int ConfigurationParser::ParsePort(int& port, const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
-  if (!isPort(valueTokens[0])) return ERROR;
+  if (!IsPort(valueTokens[0])) return ERROR;
 
   port = atoi(valueTokens[0].c_str());
 
   return OK;
 }
 
-int ConfigurationParser::parseServer_names(
-    std::set<const std::string>& server_names, const Tokens& valueTokens) {
+int ConfigurationParser::ParseServer_names(std::set<std::string>& server_names,
+                                           const Tokens& valueTokens) {
   if (valueTokens.size() < 1) return ERROR;
 
   for (size_t idx = 0; idx < valueTokens.size(); idx++) {
@@ -367,14 +389,13 @@ int ConfigurationParser::parseServer_names(
   return OK;
 }
 
-int ConfigurationParser::parseError_page(
-    std::map<const int, const std::string>& error_page,
-    const Tokens& valueTokens) {
+int ConfigurationParser::ParseError_page(std::map<int, std::string>& error_page,
+                                         const Tokens& valueTokens) {
   if (valueTokens.size() < 2) return ERROR;
 
   for (size_t idx_error_code = 0; idx_error_code < valueTokens.size() - 1;
        idx_error_code++) {
-    if (!isErrorCode(valueTokens[idx_error_code])) return ERROR;
+    if (!IsErrorCode(valueTokens[idx_error_code])) return ERROR;
 
     error_page.insert(std::make_pair(atoi(valueTokens[idx_error_code].c_str()),
                                      valueTokens[valueTokens.size() - 1]));
@@ -383,7 +404,7 @@ int ConfigurationParser::parseError_page(
   return OK;
 }
 
-int ConfigurationParser::parseClient_max_body_size(
+int ConfigurationParser::ParseClient_max_body_size(
     std::string& client_max_body_size, const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
 
@@ -392,7 +413,7 @@ int ConfigurationParser::parseClient_max_body_size(
   return OK;
 }
 
-int ConfigurationParser::parseRoot(std::string& root,
+int ConfigurationParser::ParseRoot(std::string& root,
                                    const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
 
@@ -401,17 +422,17 @@ int ConfigurationParser::parseRoot(std::string& root,
   return OK;
 }
 
-int ConfigurationParser::parseAuto_index(bool& auto_index,
+int ConfigurationParser::ParseAuto_index(bool& auto_index,
                                          const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
-  if (!isAutoIndex(valueTokens[0])) return ERROR;
+  if (!IsAutoIndex(valueTokens[0])) return ERROR;
 
   auto_index = (valueTokens[0] == "on" ? true : false);
 
   return OK;
 }
 
-int ConfigurationParser::parseIndex(std::string& index,
+int ConfigurationParser::ParseIndex(std::string& index,
                                     const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
 
@@ -420,8 +441,10 @@ int ConfigurationParser::parseIndex(std::string& index,
   return OK;
 }
 
-int ConfigurationParser::parseAllowed_method(
-    std::set<const std::string>& allowed_method, const Tokens& valueTokens) {
+int ConfigurationParser::ParseAllowed_method(
+    std::set<std::string>& allowed_method, const Tokens& valueTokens) {
+  allowed_method.clear();
+
   if (valueTokens.size() < 1) return ERROR;
 
   for (size_t idx_value = 0; idx_value < valueTokens.size(); idx_value++) {
@@ -431,7 +454,7 @@ int ConfigurationParser::parseAllowed_method(
   return OK;
 }
 
-int ConfigurationParser::parseReturn_uri(std::string& return_uri,
+int ConfigurationParser::ParseReturn_uri(std::string& return_uri,
                                          const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
 
@@ -440,7 +463,7 @@ int ConfigurationParser::parseReturn_uri(std::string& return_uri,
   return OK;
 }
 
-int ConfigurationParser::parseUpload_store(std::string& upload_store,
+int ConfigurationParser::ParseUpload_store(std::string& upload_store,
                                            const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
 
@@ -449,7 +472,58 @@ int ConfigurationParser::parseUpload_store(std::string& upload_store,
   return OK;
 }
 
-bool ConfigurationParser::isPort(const std::string& port) {
+int ConfigurationParser::ValidConfiguration(const Configuration& conf) {
+  if (ValidServerUnique(conf) == ERROR) return ERROR;
+
+  return OK;
+}
+
+int ConfigurationParser::ValidServerUnique(const Configuration& conf) {
+  std::map<int, std::set<std::string> > server_names;
+  std::vector<std::pair<int, std::string> > v_port_server_name;
+
+  for (Configuration::const_iterator it_conf = conf.begin();
+       it_conf != conf.end(); it_conf++) {
+    for (std::set<std::string>::const_iterator it_server_names =
+             it_conf->server_names().begin();
+         it_server_names != it_conf->server_names().end(); it_server_names++) {
+      if (server_names.find(it_conf->port()) == server_names.end()) {
+        server_names[it_conf->port()] = std::set<std::string>();
+        server_names[it_conf->port()].insert(*it_server_names);
+      } else {
+        if (server_names[it_conf->port()].find(*it_server_names) !=
+            server_names[it_conf->port()].end()) {
+          std::cerr << PORT_HOST_VALID_ERROR_MESSAGE << std::endl;
+
+          return ERROR;
+        } else {
+          server_names[it_conf->port()].insert(*it_server_names);
+        }
+      }
+    }
+  }
+
+  return OK;
+}
+
+std::set<std::string> ConfigurationParser::getDefaultServerName() {
+  std::set<std::string> server_names;
+
+  server_names.insert("localhost");
+
+  return server_names;
+}
+
+std::set<std::string> ConfigurationParser::getDefaultAllowedMethod() {
+  std::set<std::string> allowed_method;
+
+  allowed_method.insert("GET");
+  allowed_method.insert("POST");
+
+  return allowed_method;
+}
+
+bool ConfigurationParser::IsPort(const std::string& port) {
   int num = 0;
 
   for (size_t idx = 0; idx < port.size(); idx++) {
@@ -463,7 +537,7 @@ bool ConfigurationParser::isPort(const std::string& port) {
   return true;
 }
 
-bool ConfigurationParser::isErrorCode(const std::string& error_code) {
+bool ConfigurationParser::IsErrorCode(const std::string& error_code) {
   int num = 0;
 
   for (size_t idx = 0; idx < error_code.size(); idx++) {
@@ -477,7 +551,7 @@ bool ConfigurationParser::isErrorCode(const std::string& error_code) {
   return true;
 }
 
-bool ConfigurationParser::isAutoIndex(const std::string& auto_index) {
+bool ConfigurationParser::IsAutoIndex(const std::string& auto_index) {
   if (auto_index == "on" || auto_index == "off") return true;
 
   return false;

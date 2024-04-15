@@ -3,7 +3,7 @@ NAME = webserv
 CXX = c++
 RM = rm -f
 
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -g3
 
 SRC_DIR = src
 OBJ_DIR = obj
@@ -19,6 +19,7 @@ SRCS = $(addprefix src/, main.cpp \
 												uri.cpp \
 												request.cpp \
 												response.cpp \
+												cgi.cpp \
 												utils.cpp)
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
