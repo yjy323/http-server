@@ -9,7 +9,21 @@
 #include "utils.hpp"
 
 class Request {
- public:  // todo private으로 바꿀 지 고려
+ public:
+  Request();
+  Request(const Request& obj);
+  ~Request();
+  Request& operator=(const Request& obj);
+
+  int ParseRequestHeader(const char* buff, ssize_t size, ssize_t& offset);
+  int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
+
+  const std::string& method() const;
+  const Uri& uri() const;
+  const HeadersIn& headers_in() const;
+  const std::string& body() const;
+
+ private:
   std::string method_;
   Uri uri_;
 
@@ -19,17 +33,7 @@ class Request {
   int ParseRequestLine(std::string& request_line);
   int ParseFieldValue(std::string& header);
 
-  int ParseRequestHeader(const char* buff, ssize_t size, ssize_t& offset);
-  int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
   int DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset);
-
- public:
-  int status_code_;
-
-  Request();
-  Request(const Request& obj);
-  ~Request();
-  Request& operator=(const Request& obj);
 };
 
 #endif

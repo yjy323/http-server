@@ -1,9 +1,5 @@
 #include "uri.hpp"
 
-// 임시
-#define HTTP_OK 0
-#define HTTP_BAD_REQUEST 1
-
 /*
         uri.cpp에 사용되는 비멤버 함수
 */
@@ -34,7 +30,15 @@ int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
 /*
         URI 클래스 멤버 함수
 */
-Uri::Uri() {}
+Uri::Uri()
+    : request_target_form_(kAbsoluteForm),
+      request_target_(""),
+      scheme_("http"),
+      user_(""),
+      password_(""),
+      host_("localhost:80"),
+      path_("/"),
+      query_string_("") {}
 Uri::~Uri() {}
 
 Uri::Uri(const Uri& obj) { *this = obj; }
@@ -43,12 +47,23 @@ Uri& Uri::operator=(const Uri& obj) {
     this->request_target_form_ = obj.request_target_form_;
     this->request_target_ = obj.request_target_;
     this->scheme_ = obj.scheme_;
+    this->user_ = obj.user_;
+    this->password_ = obj.password_;
     this->host_ = obj.host_;
     this->path_ = obj.path_;
     this->query_string_ = obj.query_string_;
   }
   return *this;
 }
+
+Uri::RequestTargetFrom Uri::request_target_form() const {}
+const std::string& Uri::request_target() const {}
+const std::string& Uri::scheme() const {}
+const std::string& Uri::user() const {}
+const std::string& Uri::password() const {}
+const std::string& Uri::host() const {}
+const std::string& Uri::path() const {}
+const std::string& Uri::query_string() const {}
 
 int Uri::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
@@ -205,7 +220,6 @@ int Uri::ReconstructTargetUri(std::string& request_host) {
     this->scheme_ = "http";
     this->host_ = request_host;
   }
-
   this->request_target_ = this->path_;
   return HTTP_OK;
 }

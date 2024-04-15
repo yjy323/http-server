@@ -53,6 +53,11 @@ Request& Request::operator=(const Request& obj) {
   return *this;
 }
 
+const std::string& Request::method() const { return this->method_; }
+const Uri& Request::uri() const { return this->uri_; }
+const HeadersIn& Request::headers_in() const { return this->headers_in_; }
+const std::string& Request::body() const { return this->body_; }
+
 int Request::ParseRequestLine(std::string& request_line) {
   std::vector<std::string> request_line_component = Split(request_line, ' ');
   if (request_line_component.size() != 3) {
