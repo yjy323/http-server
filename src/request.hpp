@@ -46,7 +46,7 @@ class Request {
   int ValidateHttpContentLengthHeader(HeadersIterator& end);
   int ValidateStandardHttpHeader();
 
-  int ParseRequestHeader(char* buff, ssize_t size, ssize_t& offset);
+  int ParseRequestHeader(const char* buff, ssize_t size, ssize_t& offset);
   int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
   int DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset);
 

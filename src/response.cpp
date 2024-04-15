@@ -1,11 +1,22 @@
 #include "response.hpp"
 
-Response::Response(Request& request, ServerConfiguration& server_conf)
+Response::Response() : request_(), server_conf_() {}
+Response::Response(const Request& request,
+                   const ServerConfiguration& server_conf)
     : request_(request), server_conf_(server_conf) {}
 Response::Response(const Response& obj) { (void)obj; }
 Response::~Response() {}
 Response& Response::operator=(const Response& obj) {
-  (void)obj;
+  if (this == &obj) return *this;
+
+  request_ = obj.request_;
+  server_conf_ = obj.server_conf_;
+  loc_conf_ = obj.loc_conf_;
+  request_target_ = obj.request_target_;
+  target_resource_ = obj.target_resource_;
+  target_resource_type_ = obj.target_resource_type_;
+  response_message_ = obj.response_message_;
+
   return *this;
 }
 
@@ -109,7 +120,7 @@ int Response::GetMimeType() {
   if (this->target_resource_extension_ == "html") {
     this->response_header_ += "text/html\r\n";
   } else if (this->target_resource_extension_ == "css") {
-    this->response_header_ += "style/css\r\n";
+    this->response_header_ += "text/css\r\n";
   } else {
     this->response_header_ += "text/plain\r\n";
   }

@@ -100,8 +100,9 @@ int Server::SetReusable() {
   return OK;
 }
 
-ServerConfiguration Server::ConfByHost(const std::string& host) {
-  for (std::vector<ServerConfiguration>::iterator it = this->conf_.begin();
+ServerConfiguration Server::ConfByHost(const std::string& host) const {
+  for (std::vector<ServerConfiguration>::const_iterator it =
+           this->conf_.begin();
        it != this->conf_.end(); it++) {
     for (std::set<std::string>::iterator it_server_host =
              it->server_names().begin();
