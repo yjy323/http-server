@@ -1,39 +1,43 @@
 #ifndef TRANSACTION_HPP
 #define TRANSACTION_HPP
 
-#include <sys/stat.h>
-
-#include <ctime>
-#include <fstream>
-
 #include "cgi.hpp"
 #include "configuration.hpp"
+#include "entity.hpp"
 #include "http.hpp"
-#include "request.hpp"
-#include "utils.hpp"
+#include "uri.hpp"
 
 class Transaction {
  public:
   typedef ServerConfiguration::LocationConfiguration Configuration;
-  enum ResourceType { kFile, kDirectory };
 
   Transaction();
   Transaction(const Transaction& obj);
   ~Transaction();
   Transaction& operator=(const Transaction& obj);
 
+  // Request Context
+  const Configuration& GetConfiguration(const ServerConfiguration&);
+
+  // Request
   int ParseRequestHeader(const char* buff, ssize_t size, ssize_t& offset);
   int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
 
+  // Response
   int HttpGetMethod();
   int HttpPostMethod();
   int HttpDeleteMethod();
 
-  void SetConfiguration(const ServerConfiguration&);
-  void SetTargetResource();
-  bool IsAllowedMethod(const char*);
+  std::string GetTargetResource();
+  bool IsAllowedMethod();
   bool IsRedirectedUri();
 
+  void SetCgiEnv();
+  void FreeCgiEnv();
+
+  /*
+        Getters
+  */
   const Configuration& config() const;
   const Uri& uri() const;
   const std::string& method() const;
@@ -43,24 +47,26 @@ class Transaction {
   int status_code();
 
  private:
+  void Test();
   int ParseRequestLine(std::string& request_line);
   int ParseFieldValue(std::string& header);
   int DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset);
 
+  // Request Context
   Configuration config_;
-  Uri uri_;
 
+  // Request
   std::string method_;
+  Uri uri_;
   HeadersIn headers_in_;
-  HeadersOut headers_out_;
-  std::string body_;
+  std::string body_in_;
 
+  // Response
   int status_code_;
-  std::string entity_body_;
-
   std::string target_resource_;
-  std::string target_resource_extension_;
-  ResourceType target_resource_type_;
+  HeadersOut headers_out_;
+  Entity entity_;
+  Cgi cgi_;
 };
 
 #endif

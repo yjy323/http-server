@@ -1,5 +1,7 @@
 #include "uri.hpp"
 
+#include "abnf.hpp"
+#include "utils.hpp"
 /*
         uri.cpp에 사용되는 비멤버 함수
 */
@@ -56,14 +58,16 @@ Uri& Uri::operator=(const Uri& obj) {
   return *this;
 }
 
-Uri::RequestTargetFrom Uri::request_target_form() const {}
-const std::string& Uri::request_target() const {}
-const std::string& Uri::scheme() const {}
-const std::string& Uri::user() const {}
-const std::string& Uri::password() const {}
-const std::string& Uri::host() const {}
-const std::string& Uri::path() const {}
-const std::string& Uri::query_string() const {}
+Uri::RequestTargetFrom Uri::request_target_form() const {
+  return this->request_target_form_;
+}
+const std::string& Uri::request_target() const { return this->request_target_; }
+const std::string& Uri::scheme() const { return this->scheme_; }
+const std::string& Uri::user() const { return this->user_; }
+const std::string& Uri::password() const { return this->password_; }
+const std::string& Uri::host() const { return this->host_; }
+const std::string& Uri::path() const { return this->path_; }
+const std::string& Uri::query_string() const { return this->query_string_; }
 
 int Uri::ParseScheme(std::string& scheme) {
   // Section 3.1 of [URI]
@@ -89,8 +93,6 @@ int Uri::ParseScheme(std::string& scheme) {
 int Uri::ParseAuthority(std::string& authority) {
   // Section 3.2 of [URI]
   size_t delimiter_pos;
-  std::string sub_component;
-  char* end_ptr;
 
   delimiter_pos = authority.find('@');
   if (delimiter_pos != std::string::npos) {

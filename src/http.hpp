@@ -7,6 +7,11 @@
 
 #define CRLF "\r\n"
 
+#define IF_BAD_HEADER_THEN_RETURN(HeaderFunc) \
+  if (HeaderFunc == HTTP_BAD_REQUEST) {       \
+    return HTTP_BAD_REQUEST;                  \
+  }
+
 #define HTTP_GET_METHOD "GET\0"
 #define HTTP_POST_METHOD "POST\0"
 #define HTTP_DELETE_METHOD "DELETE\0"
@@ -53,55 +58,48 @@
 #define HTTP_VERSION_NOT_SUPPORTED 505
 #define HTTP_INSUFFICIENT_STORAGE 507
 
-const static char* HTTP_STATUS[] = {"Switching Protocols",
-                                    "Processing",
-                                    "OK",
-                                    "Created",
-                                    "Accepted",
-                                    "No Content",
-                                    "Partial Content",
-                                    "Special Response",
-                                    "Moved Permanently",
-                                    "Moved Temporarily",
-                                    "See Other",
-                                    "Not Modified",
-                                    "Temporary Redirect",
-                                    "Permanent Redirect",
-                                    "Bad Request",
-                                    "Unauthorized",
-                                    "Forbidden",
-                                    "Not Found",
-                                    "Method Not Allowed",
-                                    "Request Time-out",
-                                    "Conflict",
-                                    "Length Required",
-                                    "Precondition Failed",
-                                    "Request Entity Too Large",
-                                    "Request-URI Too Large",
-                                    "Unsupported Media Type",
-                                    "Range Not Satisfiable",
-                                    "Misdirected Request",
-                                    "Too Many Requests",
-                                    "Internal Server Error",
-                                    "Not Implemented",
-                                    "Bad Gateway",
-                                    "Service Unavailable",
-                                    "Gateway Time-out",
-                                    "HTTP Version Not Supported",
-                                    "Insufficient Storage"};
+const static char* REASON_PHASE[] = {"Continue",
+                                     "Switching Protocols",
+                                     "Processing",
+                                     "OK",
+                                     "Created",
+                                     "Accepted",
+                                     "No Content",
+                                     "Partial Content",
+                                     "Special Response",
+                                     "Moved Permanently",
+                                     "Moved Temporarily",
+                                     "See Other",
+                                     "Not Modified",
+                                     "Temporary Redirect",
+                                     "Permanent Redirect",
+                                     "Bad Request",
+                                     "Unauthorized",
+                                     "Forbidden",
+                                     "Not Found",
+                                     "Method Not Allowed",
+                                     "Request Time-out",
+                                     "Conflict",
+                                     "Length Required",
+                                     "Precondition Failed",
+                                     "Request Entity Too Large",
+                                     "Request-URI Too Large",
+                                     "Unsupported Media Type",
+                                     "Range Not Satisfiable",
+                                     "Misdirected Request",
+                                     "Too Many Requests",
+                                     "Internal Server Error",
+                                     "Not Implemented",
+                                     "Bad Gateway",
+                                     "Service Unavailable",
+                                     "Gateway Time-out",
+                                     "HTTP Version Not Supported",
+                                     "Insufficient Storage"};
 
 typedef const std::string HeaderKey;
 typedef std::list<const std::string> HeaderValue;
 typedef std::map<HeaderKey, HeaderValue>::iterator HeadersIterator;
 typedef std::map<HeaderKey, HeaderValue>::const_iterator HeadersConstIterator;
-
-const char* GetHttpStatus(int status_code);
-
-const std::string InsertHeader(std::map<HeaderKey, HeaderValue>& headers,
-                               const std::string key, const std::string value);
-int ProcessHttpHeaderHost(HeadersIn&, const std::string);
-int ProcessHttpHeaderTransferEncoding(HeadersIn&, const std::string);
-int ProcessHttpHeaderContentLength(HeadersIn&, const std::string);
 
 struct HeadersIn {
   std::map<HeaderKey, HeaderValue> headers_;
@@ -145,5 +143,15 @@ struct HeadersOut {
   std::string expires_;
   std::string etag_;
 };
+
+const char* HttpGetReasonPhase(int status_code);
+
+const std::string HttpInsertHeader(std::map<HeaderKey, HeaderValue>& headers,
+                                   const std::string key,
+                                   const std::string value);
+
+int HttpHost(HeadersIn&, const std::string);
+int HttpContentLength(HeadersIn&, const std::string);
+int HttpTransferEncoding(HeadersIn&, const std::string);
 
 #endif
