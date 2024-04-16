@@ -11,6 +11,7 @@ OBJ_DIR = obj
 SRCS = $(addprefix src/, main.cpp \
 												configuration_parser.cpp \
 												multiplexer.cpp \
+												event_handler.cpp \
 												file_reader.cpp \
 												configuration.cpp \
 												server.cpp \
