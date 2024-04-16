@@ -1,12 +1,23 @@
 #include "abnf.hpp"
 
-bool Abnf::IsOctet(char c) { return (static_cast<unsigned char>(c) <= 255); }
+bool IsOctet(char c) { return (static_cast<unsigned char>(c) <= 255); }
 
-bool Abnf::IsHost(std::string& s) {
+bool IsHost(std::string s) {
   // host = IP-literal / IPv4address / reg-name
   size_t delimiter_pos;
   std::string sub_component;
   char* end_ptr;
+
+  delimiter_pos = s.find(':');
+  if (delimiter_pos != std::string::npos) {
+    // port = *DIGIT
+    sub_component = s.substr(delimiter_pos + 1);
+    long port = strtol(sub_component.c_str(), &end_ptr, 10);
+    if (end_ptr == sub_component || *end_ptr != 0 || port < 0 || port > 65535) {
+      return false;
+    }
+    s = s.substr(0, delimiter_pos);
+  }
 
   size_t length = s.length();
   if (length == 0) {
@@ -21,44 +32,22 @@ bool Abnf::IsHost(std::string& s) {
     // 네트워크 정책 상 IPv6를 지원하지 않는다.
     return false;
   } else {
-    // IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet
     /*
-            dec-octet = DIGIT               ; 0-9
-                        / %x31-39 DIGIT     ; 10-99
-                        / "1" 2DIGIT        ; 100-199
-                        / "2" %x30-34 DIGIT ; 200-249
-                        / "25" %x30-35      ; 250-255
+        IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet
+                        / reg-name = *( unreserved / pct-encoded / sub-delims )
     */
+    for (size_t i = 0; i < length; ++i) {
+      char c = s[i];
 
-    bool is_ip_v4_address = true;
-    size_t pre_delimiter_pos = 0;
-    for (int i = 0; i < 4; ++i) {
-      delimiter_pos = s.find(".", pre_delimiter_pos);
-      sub_component = s.substr(pre_delimiter_pos, delimiter_pos);
-      pre_delimiter_pos = delimiter_pos;
-      long dec_octet = strtol(sub_component.c_str(), &end_ptr, 10);
-      if (end_ptr == sub_component || *end_ptr != 0 || dec_octet < 0 ||
-          dec_octet > 255) {
-        is_ip_v4_address = false;
-        break;
-      }
-    }
-
-    if (is_ip_v4_address == false) {
-      // reg-name = *( unreserved / pct-encoded / sub-delims )
-      for (size_t i = 0; i < length; ++i) {
-        char c = s[i];
-
-        switch (c) {
-          if (!Abnf::IsPctEncoded(s, i)) {
+      switch (c) {
+        if (!IsPctEncoded(s, i)) {
+          return false;
+        }
+        default:
+          if (!IsUnreserved(c) && !IsSubDlims(c)) {
             return false;
           }
-          default:
-            if (!Abnf::IsUnreserved(c) && !Abnf::IsSubDlims(c)) {
-              return false;
-            }
-            break;
-        }
+          break;
       }
     }
 
@@ -66,7 +55,7 @@ bool Abnf::IsHost(std::string& s) {
   }
 }
 
-bool Abnf::IsWhiteSpace(char c) {
+bool IsWhiteSpace(char c) {
   // WS = SP / HTAB
   if (c == 9 || c == 32) {
     return true;
@@ -75,7 +64,7 @@ bool Abnf::IsWhiteSpace(char c) {
   }
 }
 
-bool Abnf::IsVchar(char c) {
+bool IsVchar(char c) {
   // VCHAR =  %x21-7E
   if (c < 33 || c > 126) {
     return false;
@@ -84,7 +73,7 @@ bool Abnf::IsVchar(char c) {
   }
 }
 
-bool Abnf::IsObsText(unsigned char c) {
+bool IsObsText(unsigned char c) {
   // obs-text = %x80-FF
   if (c < 128 || c > 255) {
     return false;
@@ -93,7 +82,7 @@ bool Abnf::IsObsText(unsigned char c) {
   }
 }
 
-bool Abnf::IsToken(const std::string& s) {
+bool IsToken(const std::string s) {
   // token = 1*tchar
   for (size_t i = 0; i < s.length(); ++i) {
     char c = s[i];
@@ -130,7 +119,7 @@ bool Abnf::IsToken(const std::string& s) {
   return true;
 }
 
-bool Abnf::IsUnreserved(char c) {
+bool IsUnreserved(char c) {
   // unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
   if (std::isalnum(c)) {
     return true;
@@ -147,7 +136,7 @@ bool Abnf::IsUnreserved(char c) {
   }
 }
 
-bool Abnf::IsSubDlims(char c) {
+bool IsSubDlims(char c) {
   /*
         sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / ","
                 / ";" / "="
@@ -170,7 +159,7 @@ bool Abnf::IsSubDlims(char c) {
   }
 }
 
-bool Abnf::IsPctEncoded(std::string& s, const size_t pos) {
+bool IsPctEncoded(const std::string s, const size_t pos) {
   if (pos + 2 >= s.length() || !std::isxdigit(s[pos + 1]) ||
       !std::isxdigit(s[pos + 2])) {
     return false;

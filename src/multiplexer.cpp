@@ -169,7 +169,7 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
     client.set_request_str(client.request_str() + buffer);
 
     if (size_t header_end =
-            client.request_str().find("\r\n\r\n") != std::string::npos) {
+            client.request_str().find(CRLF) != std::string::npos) {
       ssize_t offset = 0;
 
       if (client.request_instance().ParseRequestHeader(

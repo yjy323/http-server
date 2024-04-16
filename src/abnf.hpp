@@ -1,21 +1,16 @@
 #ifndef ABNF_HPP
 #define ABNF_HPP
 
-#include <cctype>
-#include <iostream>
+#include <string>
 
-class Abnf {
- private:
- public:
-  static bool IsOctet(char c);
-  static bool IsHost(std::string& s);
-  static bool IsWhiteSpace(char c);
-  static bool IsVchar(char c);
-  static bool IsObsText(unsigned char c);
-  static bool IsToken(const std::string& s);
-  static bool IsUnreserved(const char c);
-  static bool IsSubDlims(const char c);
-  static bool IsPctEncoded(std::string& s, const size_t pos);
-};
+bool IsOctet(char c);
+bool IsHost(std::string s);
+bool IsWhiteSpace(char c);
+bool IsVchar(char c);
+bool IsObsText(unsigned char c);
+bool IsToken(std::string s);
+bool IsUnreserved(char c);
+bool IsSubDlims(char c);
+bool IsPctEncoded(std::string s, size_t pos);
 
 #endif

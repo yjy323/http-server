@@ -11,16 +11,44 @@
 #include <string>
 #include <vector>
 
-#include "response.hpp"
+#include "http.hpp"
+
+#define CGI_FILE "cgi\0"
+#define PY_FILE "py\0"
 
 class Response;
 
 class Cgi {
- private:
  public:
-  static bool IsSupportedCgi(std::string&);
-  static int ExecuteCgi(const char* cgi_path, const std::string& extension,
-                        Response& response);
+  Cgi();
+  ~Cgi();
+
+  static bool IsSupportedCgi(const char*);
+  int ExecuteCgi(const char*, const char*, const char*);
+  bool TurnOn();
+
+  const std::vector<char* const>& argv() const;
+  const std::vector<char* const>& envp() const;
+  std::vector<char* const>& argv();
+  std::vector<char* const>& envp();
+  const int* cgi2server_fd() const;
+  const int* server2cgi_fd() const;
+  pid_t pid();
+  bool on();
+
+ private:
+  Cgi(const Cgi& obj);
+  Cgi& operator=(const Cgi& obj);
+
+  bool IsCgiProgram(const char*);
+  bool IsCgiScript(const char*);
+
+  std::vector<char* const> argv_;
+  std::vector<char* const> envp_;
+  int cgi2server_fd_[2];
+  int server2cgi_fd_[2];
+  pid_t pid_;
+  bool on_;
 };
 
 #endif
