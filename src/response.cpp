@@ -1,91 +1,66 @@
 #include "response.hpp"
 
-Response::Response() : request_(), server_conf_() {}
-Response::Response(const Request& request,
-                   const ServerConfiguration& server_conf)
+Response::Response() : request_() {}
+Response::Response(const Request& request)
     : request_(request),
-      server_conf_(server_conf),
-      response_header_(""),
-      response_body_(""),
-      response_message_(""),
-      status_line_("") {}
-Response::Response(const Response& obj) { (void)obj; }
+      config_(Configuration()),
+      status_code_(HTTP_OK),
+      headers_(HeadersOut()),
+      body_(""),
+      target_resource_(""),
+      target_resource_extension_(""),
+      target_resource_type_(kFile) {}
+
+Response::Response(const Response& obj) { *this = obj; }
+
 Response::~Response() {}
+
 Response& Response::operator=(const Response& obj) {
-  if (this == &obj) return *this;
-
-  request_ = obj.request_;
-  server_conf_ = obj.server_conf_;
-  loc_conf_ = obj.loc_conf_;
-  request_target_ = obj.request_target_;
-  target_resource_ = obj.target_resource_;
-  target_resource_type_ = obj.target_resource_type_;
-  response_message_ = obj.response_message_;
-
+  if (this != &obj) {
+    this->request_ = obj.request_;
+    this->config_ = obj.config_;
+    this->status_code_ = obj.status_code_;
+    this->headers_ = obj.headers_;
+    this->body_ = obj.body_;
+    this->target_resource_ = obj.target_resource_;
+    this->target_resource_extension_ = obj.target_resource_extension_;
+    this->target_resource_type_ = obj.target_resource_type_;
+  }
   return *this;
 }
 
-void Response::FindResourceConfiguration() {
-  size_t most_specific_pos = 0;
-  LocConfIterator begin = server_conf_.location().begin();
-  LocConfIterator end = server_conf_.location().end();
-  std::string request_target = request_.uri_.request_target_;
+void Response::SetConfiguration(const ServerConfiguration& server_config) {
+  typedef std::map<std::string, Configuration>::const_iterator
+      ConfigurationIterator;
 
-  for (LocConfIterator it = begin; it != end; ++it) {
+  size_t max_match_pos = 0;
+
+  for (ConfigurationIterator it = server_config.location().begin();
+       it != server_config.location().end(); ++it) {
     std::string key = it->first;
-    size_t pos = request_target.find(key);
-    if (pos == request_target.npos && most_specific_pos != 0) {
+    size_t match_pos = request_.uri().request_target().find(key);
+    if (match_pos == request_.uri().request_target().npos &&
+        max_match_pos != 0) {
       break;
-    } else if (pos == 0 && most_specific_pos < key.length()) {
-      loc_conf_ = it->second;
-      most_specific_pos = key.length();
+    } else if (match_pos == 0 && max_match_pos < key.length()) {
+      config_ = it->second;
+      max_match_pos = key.length();
     }
   }
 
-  if (most_specific_pos == 0) {
-    ServerConfiguration sc = server_conf_;
+  if (max_match_pos == 0) {
     std::set<std::string> default_allowed_method;
     default_allowed_method.insert("GET");
 
-    loc_conf_ = LocationConfiguration(
-        sc.error_page(), sc.client_max_body_size(), sc.root(), sc.auto_index(),
-        sc.index(), default_allowed_method, "", "");
+    config_ = Response::Configuration(
+        server_config.error_page(), server_config.client_max_body_size(),
+        server_config.root(), server_config.auto_index(), server_config.index(),
+        default_allowed_method, "", "");
   }
-}
-
-bool Response::IsAllowedMethod(const char* method) {
-  std::set<std::string> allowed_method = loc_conf_.allowed_method();
-  if (allowed_method.find(method) != allowed_method.end()) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-int Response::HttpTransaction() {
-  FindResourceConfiguration();
-  SetTargetResource();
-
-  // TODO: 메소드 명 define
-  std::string method = request_.method_;
-  if (IsAllowedMethod(method.c_str())) {
-    if (method == HTTP_GET_METHOD) {
-      return HttpGetMethod();
-    } else if (method == HTTP_POST_METHOD) {
-      return HttpPostMethod();
-    } else if (method == HTTP_DELETE_METHOD) {
-      return HttpDeleteMethod();
-    }
-  }
-  return HTTP_NOT_ALLOWED;
 }
 
 void Response::SetTargetResource() {
-  request_target_ = request_.uri_.request_target_;
-  if (request_target_ == loc_conf_.return_uri()) {
-    // redirect URI
-  }
-  target_resource_ = "." + loc_conf_.root() + request_.uri_.request_target_;
+  target_resource_ = "." + config_.root() + request_.uri().request_target();
 
   if (target_resource_[target_resource_.length() - 1] == '/') {
     target_resource_type_ = kDirectory;
@@ -102,75 +77,36 @@ void Response::SetTargetResource() {
   }
 }
 
-void Response::SetResponseMessage() {
-  status_line_ = "HTTP/1.1 " + std::to_string(status_code_);
-  std::time_t datetime = std::time(NULL);
-  response_header_ = "Server: webserv 1.0" CRLF;
-  "Date: " + MakeRfc850Time(datetime) + CRLF + response_header_;
-
-  if (status_code_ == HTTP_OK) {
-  } else if (status_code_ == HTTP_OK) {
-  } else if (status_code_ == HTTP_OK) {
-  } else if (status_code_ == HTTP_OK) {
-  } else if (status_code_ == HTTP_OK) {
-  } else {
+bool Response::IsRedirectedUri() {
+  std::string request_target = request_.uri().request_target();
+  if (request_.uri().request_target() == config_.return_uri()) {
+    // redirect URI
   }
 }
 
-int Response::GetMimeType() {
-  response_header_ += "Content-Type: ";
-  if (target_resource_extension_ == "html") {
-    response_header_ += "text/html" CRLF;
-  } else if (target_resource_extension_ == "css") {
-    response_header_ += "text/css" CRLF;
+bool Response::IsAllowedMethod(const char* method) {
+  if (config_.allowed_method().find(method) != config_.allowed_method().end()) {
+    return true;
   } else {
-    response_header_ += "text/plain" CRLF;
+    return false;
   }
-  return HTTP_OK;
 }
 
-int Response::GetStaticFile() {
-  if (access(target_resource_.c_str(), F_OK) == -1) {
-    return HTTP_NOT_FOUND;
-  } else if (access(target_resource_.c_str(), R_OK) == -1) {
-    return HTTP_FORBIDDEN;
+std::string GetMimeType(std::string extension) {
+  if (extension == "html") {
+    return "text/html";
+  } else if (extension == "css") {
+    return "text/css";
+  } else {
+    return "text/plain";
   }
+}
 
-  std::ifstream file(target_resource_);
-
+std::string GetContents(std::string path) {
+  std::ifstream file(path);
   std::ostringstream oss;
   oss << file.rdbuf();
-  response_body_ = oss.str();
-
-  struct stat fileInfo;
-  std::time_t modified_time;
-  if (stat(target_resource_.c_str(), &fileInfo) == 0) {
-    modified_time = fileInfo.st_mtime;
-  }
-  response_header_ += "Last-Modified: " + MakeRfc850Time(modified_time) + CRLF;
-  GetMimeType();
-  response_header_ +=
-      "Content-Length: " + std::to_string(response_body_.size()) + CRLF;
-
-  return HTTP_OK;
-}
-
-int Response::GetCgiScript() {
-  if (access(target_resource_.c_str(), F_OK) == -1) {
-    return HTTP_NOT_FOUND;
-  } else if (access(target_resource_.c_str(), X_OK | W_OK | R_OK) == -1) {
-    return HTTP_FORBIDDEN;
-  }
-
-  std::ifstream file(target_resource_);
-  struct stat fileInfo;
-  std::time_t modified_time;
-  if (stat(target_resource_.c_str(), &fileInfo) == 0) {
-    modified_time = fileInfo.st_mtime;
-  }
-  response_header_ += "Last-Modified: " + MakeRfc850Time(modified_time) + CRLF;
-  Cgi::ExecuteCgi(target_resource_.c_str(), target_resource_extension_, *this);
-  return HTTP_OK;
+  return oss.str();
 }
 
 int Response::HttpGetMethod() {

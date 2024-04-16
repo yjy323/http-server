@@ -53,24 +53,55 @@
 #define HTTP_VERSION_NOT_SUPPORTED 505
 #define HTTP_INSUFFICIENT_STORAGE 507
 
+const static char* HTTP_STATUS[] = {"Switching Protocols",
+                                    "Processing",
+                                    "OK",
+                                    "Created",
+                                    "Accepted",
+                                    "No Content",
+                                    "Partial Content",
+                                    "Special Response",
+                                    "Moved Permanently",
+                                    "Moved Temporarily",
+                                    "See Other",
+                                    "Not Modified",
+                                    "Temporary Redirect",
+                                    "Permanent Redirect",
+                                    "Bad Request",
+                                    "Unauthorized",
+                                    "Forbidden",
+                                    "Not Found",
+                                    "Method Not Allowed",
+                                    "Request Time-out",
+                                    "Conflict",
+                                    "Length Required",
+                                    "Precondition Failed",
+                                    "Request Entity Too Large",
+                                    "Request-URI Too Large",
+                                    "Unsupported Media Type",
+                                    "Range Not Satisfiable",
+                                    "Misdirected Request",
+                                    "Too Many Requests",
+                                    "Internal Server Error",
+                                    "Not Implemented",
+                                    "Bad Gateway",
+                                    "Service Unavailable",
+                                    "Gateway Time-out",
+                                    "HTTP Version Not Supported",
+                                    "Insufficient Storage"};
+
 typedef const std::string HeaderKey;
 typedef std::list<const std::string> HeaderValue;
 typedef std::map<HeaderKey, HeaderValue>::iterator HeadersIterator;
 typedef std::map<HeaderKey, HeaderValue>::const_iterator HeadersConstIterator;
 
-void InsertHeader(std::map<HeaderKey, HeaderValue>& headers,
-                  const std::string key, const std::string value) {
-  if (value.size() == 0) {
-    return;
-  }
-  HeadersConstIterator end = headers.end();
-  HeadersIterator it = headers.find(key);
-  if (it == end) {
-    headers.insert(std::make_pair(key, HeaderValue()));
-    it = headers.find(key);
-  }
-  it->second.push_back(value);
-}
+const char* GetHttpStatus(int status_code);
+
+const std::string InsertHeader(std::map<HeaderKey, HeaderValue>& headers,
+                               const std::string key, const std::string value);
+int ProcessHttpHeaderHost(HeadersIn&, const std::string);
+int ProcessHttpHeaderTransferEncoding(HeadersIn&, const std::string);
+int ProcessHttpHeaderContentLength(HeadersIn&, const std::string);
 
 struct HeadersIn {
   std::map<HeaderKey, HeaderValue> headers_;
