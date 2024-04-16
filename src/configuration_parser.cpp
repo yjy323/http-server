@@ -1,5 +1,7 @@
 #include "configuration_parser.hpp"
 
+#include <sstream>
+
 #include "file_reader.hpp"
 
 #define DEFAULT_PORT 8080
@@ -102,7 +104,7 @@ int ConfigurationParser::Tokenize(const std::string& str,
 int ConfigurationParser::Parse(const Tokens& tokens,
                                Configuration& configuration) {
   Tokens serverTokens;
-  uint64_t contextDepth = 0;
+  unsigned int contextDepth = 0;
   bool blockOpenFlag = false;
   for (size_t idx = 0; idx < tokens.size(); idx++) {
     const Token token = tokens[idx];
@@ -167,7 +169,7 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
   Tokens locationTokens;
   std::string directive;
   Tokens valueTokens;
-  uint64_t contextDepth = 0;
+  unsigned int contextDepth = 0;
   bool blockOpenFlag = false;
   bool locationPathFlag = false;
   bool locationBlockFlag = false;
@@ -386,7 +388,7 @@ int ConfigurationParser::ParsePort(int& port, const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
   if (!IsPort(valueTokens[0])) return ERROR;
 
-  port = atoi(valueTokens[0].c_str());
+  std::stringstream(valueTokens[0]) >> port;
 
   return OK;
 }
@@ -410,8 +412,11 @@ int ConfigurationParser::ParseError_page(std::map<int, std::string>& error_page,
        idx_error_code++) {
     if (!IsErrorCode(valueTokens[idx_error_code])) return ERROR;
 
-    error_page.insert(std::make_pair(atoi(valueTokens[idx_error_code].c_str()),
-                                     valueTokens[valueTokens.size() - 1]));
+    int error_code;
+    std::stringstream(valueTokens[idx_error_code]) >> error_code;
+
+    error_page.insert(
+        std::make_pair(error_code, valueTokens[valueTokens.size() - 1]));
   }
 
   return OK;
