@@ -150,9 +150,8 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
         CloseWithClient(client.fd());
 
         return;
-      }
-
-      else if (IsReadyToSend(event.ident, header_end)) {
+      } else if (client.request_instance().method_ == "GET" ||
+                 IsReadyToSend(event.ident, header_end)) {
         std::clog << "server[ " << client.server().fd() << " ]: client[ "
                   << client.fd() << " ]의 Full 메세지 수신 완료" << std::endl;
         std::clog << std::endl << " [ Full Request Start ] " << std::endl;
