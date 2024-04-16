@@ -9,6 +9,7 @@
 #define DEFAULT_ERROR_PAGE std::map<int, std::string>()
 #define DEFAULT_CLIENT_MAX_BODY_SIZE "1M"
 #define DEFAULT_SERVER_ROOT "/www/static"
+#define EFAULT_LOCATION_ROOT ""
 #define DEFAULT_AUTO_INDEX false
 #define DEFAULT_INDEX "index.html"
 #define DEFAULT_ALLOWED_METHOD ConfigurationParser::getDefaultAllowedMethod()
@@ -160,6 +161,7 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
   bool auto_index = DEFAULT_AUTO_INDEX;
   std::string index = DEFAULT_INDEX;
 
+  std::set<std::string> parsed_directive;
   std::map<std::string, Tokens> locationTokenByPath;
   std::string locationPath;
   Tokens locationTokens;
@@ -184,6 +186,11 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
                           error_page, client_max_body_size, root, auto_index,
                           index) == ERROR)
         return ERROR;
+      if (parsed_directive.find(directive) != parsed_directive.end()) {
+        std::cerr << "\"" << directive << "\" directive is duplicate";
+        return ERROR;
+      }
+      parsed_directive.insert(directive);
       valueTokens.clear();
       directive = "";
       continue;
@@ -264,13 +271,14 @@ int ConfigurationParser::ParseLocation(
     ServerConfiguration::LocationConfiguration& locationConfiguartion) {
   std::map<int, std::string> error_page = serverConfiguration.error_page();
   std::string client_max_body_size = serverConfiguration.client_max_body_size();
-  std::string root = serverConfiguration.root();
+  std::string root = EFAULT_LOCATION_ROOT;
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
   std::set<std::string> allowed_method;
   std::string return_uri = DEFAULT_RETURN_URI;
   std::string upload_store = DEFAULT_UPLOAD_STORE;
 
+  std::set<std::string> parsed_directive;
   Token directive;
   Tokens valueTokens;
 
@@ -282,6 +290,11 @@ int ConfigurationParser::ParseLocation(
                             client_max_body_size, root, auto_index, index,
                             allowed_method, return_uri, upload_store) == ERROR)
         return ERROR;
+      if (parsed_directive.find(directive) != parsed_directive.end()) {
+        std::cerr << "\"" << directive << "\" directive is duplicate";
+        return ERROR;
+      }
+      parsed_directive.insert(directive);
       directive = "";
       valueTokens.clear();
 
