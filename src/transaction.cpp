@@ -3,6 +3,13 @@
 #include "abnf.hpp"
 #include "utils.hpp"
 
+#define RETURN_STATUS_CODE return status_code_ =
+
+#define IF_BAD_HEADER_THEN_RETURN(HeaderFunc) \
+  if (HeaderFunc == HTTP_BAD_REQUEST) {       \
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;      \
+  }
+
 /*
         비멤버 함수
 */
@@ -20,8 +27,11 @@ Transaction::Transaction()
       status_code_(HTTP_OK),
       target_resource_(""),
       headers_out_(),
+      body_out_(""),
       entity_(),
-      cgi_() {}
+      cgi_() {
+  headers_out_.server = "webserv/1.0";
+}
 
 Transaction::Transaction(const Transaction& obj) { *this = obj; }
 
@@ -37,6 +47,9 @@ Transaction& Transaction::operator=(const Transaction& obj) {
     this->config_ = obj.config_;
     this->status_code_ = obj.status_code_;
     this->headers_out_ = obj.headers_out_;
+    this->body_out_ = obj.body_out_;
+    this->entity_ = obj.entity_;
+    this->cgi_ = obj.cgi_;
   }
   return *this;
 }
@@ -59,22 +72,22 @@ const HeadersOut& Transaction::headers_out() const {
 int Transaction::ParseRequestLine(std::string& request_line) {
   std::vector<std::string> request_line_component = Split(request_line, ' ');
   if (request_line_component.size() != 3) {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
   std::string method = request_line_component[0];
   std::string request_target = request_line_component[1];
   std::string http_version = request_line_component[2];
   if (method.length() == 0 || !IsToken(method)) {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
   if (this->uri_.ParseUriComponent(request_target) == HTTP_BAD_REQUEST) {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
   if (http_version != "HTTP/1.1" && http_version != "HTTP/1.0") {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
   this->method_ = method;
-  return HTTP_OK;
+  RETURN_STATUS_CODE HTTP_OK;
 }
 
 int Transaction::ParseFieldValue(std::string& field_line) {
@@ -93,12 +106,12 @@ int Transaction::ParseFieldValue(std::string& field_line) {
   std::string field_value;
   size_t delimiter_pos = field_line.find(':');
   if (delimiter_pos == std::string::npos) {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
 
   field_name = ToCaseInsensitive(field_line.substr(0, delimiter_pos));
   if (field_name.length() == 0 || !IsToken(field_name)) {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
 
   field_value = Trim(field_line.substr(delimiter_pos + 1));
@@ -107,7 +120,7 @@ int Transaction::ParseFieldValue(std::string& field_line) {
     if (IsVchar(c) || IsObsText(c) || IsWhiteSpace(c)) {
       continue;
     } else {
-      return HTTP_BAD_REQUEST;
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
     }
   }
 
@@ -134,13 +147,14 @@ int Transaction::ParseFieldValue(std::string& field_line) {
   }
   HttpInsertHeader(headers_in_.headers_, field_name, field_value);
 
-  return HTTP_OK;
+  RETURN_STATUS_CODE HTTP_OK;
 }
 /*
         int Transaction::DecodeChunkedEncoding(char* buff, ssize_t size,
    ssize_t& offset)
         {}
 */
+
 int Transaction::ParseRequestHeader(const char* buff, ssize_t size,
                                     ssize_t& offset) {
   /*
@@ -159,7 +173,8 @@ int Transaction::ParseRequestHeader(const char* buff, ssize_t size,
     crlf_pos = buff_str.find(CRLF);
     if (crlf_pos == buff_str.npos) {
       // CRLF가 존재하지 않는 요청 해더
-      return HTTP_BAD_REQUEST;
+      // return status_code_ = HTTP_BAD_REQUEST;
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
     }
 
     line = buff_str.substr(0, crlf_pos);
@@ -170,34 +185,34 @@ int Transaction::ParseRequestHeader(const char* buff, ssize_t size,
       continue;
     } else if (start_line_flag) {
       if (ParseRequestLine(line) == HTTP_BAD_REQUEST) {
-        return HTTP_BAD_REQUEST;
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
       } else {
         start_line_flag = false;
         continue;
       }
     } else if (line.empty()) {
-      return HTTP_OK;
+      RETURN_STATUS_CODE HTTP_OK;
     } else {
       if (ParseFieldValue(line) == HTTP_BAD_REQUEST) {
-        return HTTP_BAD_REQUEST;
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
       }
     }
   }
-  return HTTP_BAD_REQUEST;
+  RETURN_STATUS_CODE HTTP_BAD_REQUEST;
 }
 int Transaction::ParseRequestBody(char* buff, ssize_t size, ssize_t& offset) {
   if (headers_in_.chuncked) {
-    return HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   } else {
     // DecodeChunkedEncoding(buff, size, offset);
     for (; offset < size; ++offset) {
       char c = buff[offset];
       if (!IsOctet(c)) {
-        return HTTP_BAD_REQUEST;
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
       }
       this->body_in_ = std::string(buff);
     }
-    return HTTP_OK;
+    RETURN_STATUS_CODE HTTP_OK;
   }
 }
 
@@ -232,67 +247,113 @@ const Transaction::Configuration& Transaction::GetConfiguration(
   return config_;
 }
 
-std::string Transaction::GetTargetResource() {
-  return target_resource_ = "." + config_.root() + uri_.request_target();
-}
-
-bool Transaction::IsRedirectedUri() {
-  std::string request_target = uri_.request_target();
+int Transaction::HttpProcess() {
   if (uri_.request_target() == config_.return_uri()) {
-    return true;
-  } else {
-    return false;
+    RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
   }
-}
 
-bool Transaction::IsAllowedMethod() {
+  target_resource_ = "." + config_.root() + uri_.request_target();
+
   if (config_.allowed_method().find(method_) !=
       config_.allowed_method().end()) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-void Transaction::Test() {
-  if (IsRedirectedUri()) {
-    HTTP_MOVED_PERMANENTLY;
-  }
-
-  if (!IsAllowedMethod()) {
-    HTTP_NOT_ALLOWED;
+    RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
   }
 
   if (method_ == HTTP_GET_METHOD) {
-    if (!Entity::IsFileExist(target_resource_.c_str())) HTTP_NOT_FOUND;
-    entity_ = Entity(target_resource_);
-
-    if (Cgi::IsSupportedCgi(entity_.extension().c_str()) &&
-        Entity::IsFileExecutable(target_resource_.c_str())) {
-      cgi_.TurnOn();
-    } else if (Entity::IsFileReadable(target_resource_.c_str())) {
-      entity_.ReadFile();
-    } else {
-      HTTP_FORBIDDEN;
-    }
+    RETURN_STATUS_CODE HttpGet();
   }
 
   if (method_ == HTTP_POST_METHOD) {
-    if (!Entity::IsFileExist(target_resource_.c_str())) HTTP_NOT_FOUND;
-
-    entity_ = Entity(target_resource_);
-    if (Cgi::IsSupportedCgi(entity_.extension().c_str()) &&
-        Entity::IsFileExecutable(target_resource_.c_str())) {
-      cgi_.TurnOn();
-    } else {
-      HTTP_FORBIDDEN;
-    }
+    RETURN_STATUS_CODE HttpPost();
   }
 
   if (method_ == HTTP_DELETE_METHOD) {
-    if (!Entity::IsFileExist(target_resource_.c_str())) HTTP_NO_CONTENT;
-    if (!Entity::IsFileExecutable(target_resource_.c_str())) HTTP_FORBIDDEN;
+    RETURN_STATUS_CODE HttpGet();
   }
+
+  RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
+}
+
+pid_t Transaction::ExecuteCgi() {
+  SetCgiEnv();
+  int pid = 0;
+  status_code_ = cgi_.ExecuteCgi(target_resource_.c_str(),
+                                 entity_.extension().c_str(), body_in_.c_str());
+  if (status_code_ != HTTP_OK) {
+    pid = -1;
+  } else {
+    pid = cgi_.pid();
+  }
+  FreeCgiEnv();
+  return pid;
+}
+
+int Transaction::HttpGet() {
+  if (!Entity::IsFileExist(target_resource_.c_str())) {
+    RETURN_STATUS_CODE HTTP_NOT_FOUND;
+  }
+  entity_ = Entity(target_resource_);
+
+  if (Cgi::IsSupportedCgi(entity_.extension().c_str())) {
+    if (Entity::IsFileExecutable(target_resource_.c_str())) {
+      cgi_.TurnOn();
+      RETURN_STATUS_CODE HTTP_OK;
+    } else {
+      RETURN_STATUS_CODE HTTP_FORBIDDEN;
+    }
+    // SetCgiEnv();
+    // cgi_.ExecuteCgi(target_resource_.c_str(), entity_.extension().c_str(),
+    //                 body_in_.c_str());
+    // FreeCgiEnv();
+  } else {
+    if (Entity::IsFileReadable(target_resource_.c_str())) {
+      entity_.ReadFile();
+      body_out_ = entity_.body();
+      headers_out_.content_type = entity_.type();
+      headers_out_.content_length = entity_.length();
+      headers_out_.last_modified = entity_.modified_s();
+      RETURN_STATUS_CODE HTTP_OK;
+    } else {
+      RETURN_STATUS_CODE HTTP_FORBIDDEN;
+    }
+  }
+}
+
+int Transaction::HttpPost() {
+  if (!Entity::IsFileExist(target_resource_.c_str())) {
+    RETURN_STATUS_CODE HTTP_NOT_FOUND;
+  }
+
+  entity_ = Entity(target_resource_);
+  if (Cgi::IsSupportedCgi(entity_.extension().c_str())) {
+    if (Entity::IsFileExecutable(target_resource_.c_str())) {
+      cgi_.TurnOn();
+      RETURN_STATUS_CODE HTTP_OK;
+    } else {
+      RETURN_STATUS_CODE HTTP_FORBIDDEN;
+    }
+    // SetCgiEnv();
+    // cgi_.ExecuteCgi(target_resource_.c_str(), entity_.extension().c_str(),
+    //                 body_in_.c_str());
+    // FreeCgiEnv();
+  } else {
+    RETURN_STATUS_CODE HTTP_FORBIDDEN;
+  }
+}
+
+int Transaction::HttpDelete() {
+  if (!Entity::IsFileExist(target_resource_.c_str())) {
+    RETURN_STATUS_CODE HTTP_NO_CONTENT;
+  }
+  if (!Entity::IsFileExecutable(target_resource_.c_str())) {
+    RETURN_STATUS_CODE HTTP_FORBIDDEN;
+  }
+
+  entity_.ReadFile();
+  headers_out_.content_type = entity_.type();
+  headers_out_.content_length = entity_.length();
+  std::remove(this->target_resource_.c_str());
+  RETURN_STATUS_CODE HTTP_OK;
 }
 
 char* SetEnv(const char* key, const char* value) {
@@ -310,7 +371,7 @@ void Transaction::SetCgiEnv() {
   } else if (method_ == HTTP_POST_METHOD) {
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "POST"));
     cgi_.envp().push_back(
-        SetEnv("CONTENT_LENGTH=", headers_in_.content_length_.c_str()));
+        SetEnv("CONTENT_LENGTH=", headers_in_.content_length.c_str()));
   }
 }
 
@@ -320,3 +381,5 @@ void Transaction::FreeCgiEnv() {
     delete *it;
   }
 }
+
+std::string Transaction::CreateResponseMessage() { return ""; }

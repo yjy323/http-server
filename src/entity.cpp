@@ -1,11 +1,16 @@
 #include "entity.hpp"
 
+#include "utils.hpp"
+
 Entity::Entity()
     : path_(""),
       type_(kFile),
       body_(""),
       extension_(""),
       mime_type_(""),
+      modified_s_(""),
+      modified_t_(0),
+      length_(""),
       length_n_(0) {}
 
 Entity::Entity(std::string path)
@@ -14,6 +19,9 @@ Entity::Entity(std::string path)
       body_(""),
       extension_(GetExtension(path)),
       mime_type_(),
+      modified_s_(""),
+      modified_t_(0),
+      length_(""),
       length_n_(0) {}
 
 Entity::Entity(const Entity& obj) { *this = obj; }
@@ -25,6 +33,9 @@ Entity& Entity::operator=(const Entity& obj) {
     this->body_ = obj.body_;
     this->extension_ = obj.extension_;
     this->mime_type_ = obj.mime_type_;
+    this->modified_s_ = obj.modified_s_;
+    this->modified_t_ = obj.modified_t_;
+    this->length_ = obj.length_;
     this->length_n_ = obj.length_n_;
   }
   return *this;
@@ -35,6 +46,9 @@ Entity::eType Entity::type() { return this->type_; }
 std::string Entity::body() const { return this->body_; }
 std::string Entity::extension() const { return this->extension_; }
 std::string Entity::mime_type() const { return this->mime_type_; }
+std::string Entity::modified_s() const { return this->modified_s_; }
+std::time_t Entity::modified_t() const { return this->modified_t_; }
+std::string Entity::length() const { return this->length_; }
 ssize_t Entity::length_n() { return this->length_n_; }
 
 bool Entity::IsFileExist(const char* path) {
@@ -97,10 +111,23 @@ std::string Entity::GetMimeType(std::string extension) {
   return mime_type_;
 }
 
+std::time_t Entity::GetModifiedTime(std::string path) {
+  struct stat fileInfo;
+  if (stat(path.c_str(), &fileInfo) == 0) {
+    modified_t_ = fileInfo.st_mtime;
+    modified_s_ = MakeRfc850Time(modified_t_);
+  } else {
+    modified_s_ = "";
+  }
+  return modified_t_;
+}
+
 void Entity::ReadFile() {
   mime_type_ = GetMimeType(extension_);
   body_ = GetContents(path_);
+  modified_t_ = GetModifiedTime(path_);
   length_n_ = body_.size();
+  length_ = std::to_string(length_n_);
 }
 
-void Entity::ReadBuffer() {}
+// void Entity::ReadBuffer(const char*, size_t size) {}

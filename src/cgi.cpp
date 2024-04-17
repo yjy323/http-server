@@ -18,6 +18,14 @@ Cgi::Cgi(const Cgi& obj) { *this = obj; }
 Cgi::~Cgi() {}
 Cgi& Cgi::operator=(const Cgi& obj) {
   if (this != &obj) {
+    // this->argv_ = obj.argv_;
+    // this->envp_ = obj.envp_;
+    this->cgi2server_fd_[0] = obj.cgi2server_fd_[0];
+    this->cgi2server_fd_[1] = obj.cgi2server_fd_[1];
+    this->server2cgi_fd_[0] = obj.server2cgi_fd_[0];
+    this->server2cgi_fd_[1] = obj.server2cgi_fd_[1];
+    this->pid_ = obj.pid_;
+    this->on_ = obj.on_;
   }
   return *this;
 }
@@ -62,8 +70,8 @@ bool Cgi::IsCgiScript(const char* extension) {
   }
 }
 
-int Cgi::ExecuteCgi(const char* path, const char* extension,
-                    const char* form_data) {
+pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
+                      const char* form_data) {
   std::ifstream ifs(path);
 
   if (IsCgiProgram(extension)) {
@@ -106,16 +114,7 @@ int Cgi::ExecuteCgi(const char* path, const char* extension,
     close(cgi2server_fd_[1]);
     write(server2cgi_fd_[1], form_data, std::strlen(form_data));
     close(server2cgi_fd_[1]);
-
-    char buffer[8192];
-    std::string cgi_response;
-
-    ssize_t count;
-    while ((count = read(server2cgi_fd_[0], buffer, sizeof(buffer))) > 0) {
-      cgi_response.append(buffer, count);
-    }
-    close(cgi2server_fd_[0]);
   }
 
-  return 0;
+  return HTTP_OK;
 }
