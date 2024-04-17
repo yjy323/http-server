@@ -122,12 +122,33 @@ std::time_t Entity::GetModifiedTime(std::string path) {
   return modified_t_;
 }
 
-void Entity::ReadFile() {
-  mime_type_ = GetMimeType(extension_);
-  body_ = GetContents(path_);
-  modified_t_ = GetModifiedTime(path_);
+std::string Entity::CreatePage(std::string body_line) {
+  mime_type_ = GetMimeType("html");
+  body_ =
+      "<html>\n"
+      "<head><title>" +
+      body_line +
+      "</title></head>\n"
+      "<body>\n"
+      "<center><h1>" +
+      body_line +
+      "</h1></center>\n"
+      "<hr><center>nginx/1.25.4</center>\n"
+      "</body>\n"
+      "</html>";
   length_n_ = body_.size();
   length_ = std::to_string(length_n_);
+  return body_;
+}
+// void CreateDirectoryListingPage();
+
+std::string Entity::ReadFile(const char* path) {
+  mime_type_ = GetMimeType(extension_);
+  body_ = GetContents(path);
+  modified_t_ = GetModifiedTime(path);
+  length_n_ = body_.size();
+  length_ = std::to_string(length_n_);
+  return body_;
 }
 
 // void Entity::ReadBuffer(const char*, size_t size) {}

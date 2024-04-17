@@ -23,8 +23,10 @@ class Entity {
   static bool IsFileReadable(const char* path);
   static bool IsFileExecutable(const char* path);
 
-  void ReadFile();
-  void ReadBuffer(const char*, size_t size);
+  std::string CreatePage(std::string body_line);
+  std::string CreateDirectoryListingPage();
+  std::string ReadFile(const char* path);
+  std::string ReadBuffer(const char* buff, size_t size);
 
   std::string path() const;
   eType type();
