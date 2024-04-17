@@ -46,8 +46,8 @@ bool Cgi::TurnOn() {
 }
 
 bool Cgi::IsSupportedCgi(const char* extension) {
-  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) ||
-      std::strncmp(extension, CGI_FILE, std::strlen(PY_FILE) + 1)) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) == 0 ||
+      std::strncmp(extension, PY_FILE, std::strlen(PY_FILE) + 1) == 0) {
     return true;
   } else {
     return false;
@@ -55,7 +55,7 @@ bool Cgi::IsSupportedCgi(const char* extension) {
 }
 
 bool Cgi::IsCgiProgram(const char* extension) {
-  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1)) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) == 0) {
     return true;
   } else {
     return false;

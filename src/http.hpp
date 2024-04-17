@@ -1,6 +1,7 @@
 #ifndef HTTP_HPP
 #define HTTP_HPP
 
+#include <ctime>
 #include <list>
 #include <map>
 #include <string>
@@ -10,6 +11,15 @@
 #define HTTP_GET_METHOD "GET\0"
 #define HTTP_POST_METHOD "POST\0"
 #define HTTP_DELETE_METHOD "DELETE\0"
+
+#define HTTP_1_1 "HTTP/1.1\0"
+#define HTTP_1_0 "HTTP/1.0\0"
+
+#define HTTP_INFORMATIONAL 1
+#define HTTP_SUCCESSFUL 2
+#define HTTP_REDIRECTION 3
+#define HTTP_CLIENT_ERROR 4
+#define HTTP_SERVER_ERROR 5
 
 #define HTTP_CONTINUE 100
 #define HTTP_SWITCHING_PROTOCOLS 101
@@ -137,6 +147,9 @@ struct HeadersOut {
   std::string www_authenticate;
   std::string expires;
   std::string etag;
+  std::string allow;
+
+  std::time_t date_t;
 };
 
 const char* HttpGetReasonPhase(int status_code);

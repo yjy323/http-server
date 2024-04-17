@@ -54,6 +54,11 @@ class Transaction {
   void SetCgiEnv();
   void FreeCgiEnv();
 
+  void SetEntityHeaders();
+  std::string AppendStatusLine();
+  std::string AppendResponseHeader(const std::string key,
+                                   const std::string value);
+
   // Request Context
   Configuration config_;
 
@@ -64,12 +69,16 @@ class Transaction {
   std::string body_in_;
 
   // Response
+  std::string http_version_;
+  std::string server_version_;
   int status_code_;
   std::string target_resource_;
   HeadersOut headers_out_;
   std::string body_out_;
   Entity entity_;
   Cgi cgi_;
+
+  std::string response_;
 };
 
 #endif
