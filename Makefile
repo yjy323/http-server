@@ -18,8 +18,9 @@ SRCS = $(addprefix src/, main.cpp \
 												client.cpp \
 												abnf.cpp \
 												uri.cpp \
-												request.cpp \
-												response.cpp \
+												transaction.cpp \
+												entity.cpp \
+												http.cpp \
 												cgi.cpp \
 												utils.cpp)
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))

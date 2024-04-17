@@ -1,18 +1,12 @@
 #include "client.hpp"
 
 Client::Client()
-    : server_(),
-      fd_(-1),
-      request_(),
-      response_(),
-      request_str_(""),
-      response_str_("") {}
+    : server_(), fd_(-1), transaction_(), request_str_(""), response_str_("") {}
 
 Client::Client(const Server& server, int fd)
     : server_(server),
       fd_(fd),
-      request_(),
-      response_(),
+      transaction_(),
       request_str_(""),
       response_str_("") {}
 
@@ -35,16 +29,6 @@ Client& Client::operator=(const Client& ref) {
   return *this;
 }
 
-void Client::MakeResponse() {
-  const Server& sk = this->server_;
-
-  this->request_.uri_.ReconstructTargetUri(this->request_.http_host_);
-  const ServerConfiguration& sc = sk.ConfByHost(this->request_.http_host_);
-
-  this->response_ = Response(this->request_, sc);
-  this->response_.HttpTransaction();
-}
-
 const int& Client::fd() const { return this->fd_; }
 
 const Server& Client::server() const { return this->server_; }
@@ -53,13 +37,9 @@ const std::string& Client::request_str() const { return this->request_str_; }
 
 const std::string& Client::response_str() const { return this->response_str_; }
 
-const Request& Client::request() const { return this->request_; }
+const Transaction& Client::transaction() const { return this->transaction_; }
 
-const Response& Client::response() const { return this->response_; }
-
-Request& Client::request_instance() { return this->request_; }
-
-Response& Client::response_instance() { return this->response_; }
+Transaction& Client::transaction_instance() { return this->transaction_; }
 
 void Client::set_request_str(const std::string& request_str) {
   this->request_str_ = request_str;

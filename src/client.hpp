@@ -3,9 +3,8 @@
 
 #include <string>
 
-#include "request.hpp"
-#include "response.hpp"
 #include "server.hpp"
+#include "transaction.hpp"
 
 class Client {
  public:
@@ -16,16 +15,13 @@ class Client {
 
   Client& operator=(const Client& ref);
 
-  void MakeResponse();
-
   const int& fd() const;
   const Server& server() const;
   const std::string& request_str() const;
   const std::string& response_str() const;
-  const Request& request() const;
-  const Response& response() const;
-  Request& request_instance();
-  Response& response_instance();
+
+  const Transaction& transaction() const;
+  Transaction& transaction_instance();
 
   void set_request_str(const std::string& request);
   void set_response_str(const std::string& response);
@@ -33,8 +29,7 @@ class Client {
  private:
   Server server_;
   int fd_;
-  Request request_;
-  Response response_;
+  Transaction transaction_;
   std::string request_str_;
   std::string response_str_;
 };

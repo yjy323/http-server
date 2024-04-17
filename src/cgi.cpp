@@ -6,122 +6,115 @@
 #include <sstream>
 #include <string>
 
-char* SetEnv(const char*, const char*);
+Cgi::Cgi()
+    : argv_(std::vector<char* const>()),
+      envp_(std::vector<char* const>()),
+      cgi2server_fd_(),
+      server2cgi_fd_(),
+      pid_(0),
+      on_(false) {}
 
-char* SetEnv(const char* key, const char* value) {
-  char* env = new char[std::strlen(key) + std::strlen(value) + 1];
-  std::strcpy(env, key);
-  std::strcat(env, value);
-  return (char* const)env;
+Cgi::Cgi(const Cgi& obj) { *this = obj; }
+Cgi::~Cgi() {}
+Cgi& Cgi::operator=(const Cgi& obj) {
+  if (this != &obj) {
+    // this->argv_ = obj.argv_;
+    // this->envp_ = obj.envp_;
+    this->cgi2server_fd_[0] = obj.cgi2server_fd_[0];
+    this->cgi2server_fd_[1] = obj.cgi2server_fd_[1];
+    this->server2cgi_fd_[0] = obj.server2cgi_fd_[0];
+    this->server2cgi_fd_[1] = obj.server2cgi_fd_[1];
+    this->pid_ = obj.pid_;
+    this->on_ = obj.on_;
+  }
+  return *this;
 }
 
-bool Cgi::IsSupportedCgi(std::string& extension) {
-  if (extension == "cgi" || extension == "py") {
+const std::vector<char* const>& Cgi::argv() const { return this->argv_; }
+const std::vector<char* const>& Cgi::envp() const { return this->envp_; }
+std::vector<char* const>& Cgi::argv() { return this->argv_; }
+std::vector<char* const>& Cgi::envp() { return this->envp_; }
+
+const int* Cgi::cgi2server_fd() const { return this->cgi2server_fd_; }
+const int* Cgi::server2cgi_fd() const { return this->server2cgi_fd_; }
+pid_t Cgi::pid() const { return this->pid_; }
+bool Cgi::on() const { return this->on_; }
+
+bool Cgi::TurnOn() {
+  on_ = true;
+  return on_;
+}
+
+bool Cgi::IsSupportedCgi(const char* extension) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) ||
+      std::strncmp(extension, CGI_FILE, std::strlen(PY_FILE) + 1)) {
     return true;
   } else {
     return false;
   }
 }
 
-int Cgi::ExecuteCgi(const char* cgi_path, const std::string& extension,
-                    Response& response) {
-  std::ifstream ifs(cgi_path);
+bool Cgi::IsCgiProgram(const char* extension) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1)) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-  std::vector<char* const> argv;
+bool Cgi::IsCgiScript(const char* extension) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(PY_FILE) + 1)) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
-  if (extension == "cgi\0") {
-    argv.push_back(const_cast<char*>(cgi_path));
-    argv.push_back(NULL);
+pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
+                      const char* form_data) {
+  std::ifstream ifs(path);
 
-  } else if (extension == "py\0") {
+  if (IsCgiProgram(extension)) {
+    argv_.push_back(const_cast<char*>(path));
+    argv_.push_back(NULL);
+
+  } else if (IsCgiScript(extension)) {
     std::string buffer;
     std::getline(ifs, buffer, '\n');
-    if (buffer.size() > 2 && buffer.find("#!") == 0) {
-      buffer.replace(0, 2, "");
-    } else {
-      return 403;
+    if (buffer.size() < 2 || buffer.find("#!") != 0) {
+      return HTTP_FORBIDDEN;
     }
 
-    const char* cgi_program = buffer.c_str();
-    argv.push_back(const_cast<char*>(cgi_program));
-    argv.push_back(const_cast<char*>(cgi_path));
-    argv.push_back(NULL);
+    argv_.push_back(const_cast<char*>(buffer.replace(0, 2, "").c_str()));
+    argv_.push_back(const_cast<char*>(path));
+    argv_.push_back(NULL);
+  }
 
+  if (pipe(cgi2server_fd_) == -1 || pipe(server2cgi_fd_) == -1) {
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+
+  pid_ = fork();
+  if (pid_ == -1) {
+    return HTTP_INTERNAL_SERVER_ERROR;
+
+  } else if (pid_ == 0) {
+    close(server2cgi_fd_[1]);
+    dup2(server2cgi_fd_[0], STDIN_FILENO);
+    close(server2cgi_fd_[0]);
+
+    close(cgi2server_fd_[0]);
+    dup2(cgi2server_fd_[1], STDOUT_FILENO);
+    close(cgi2server_fd_[1]);
+
+    execve(*argv_.data(), argv_.data(), envp_.data());
+    exit(1);
   } else {
-    return 403;
-  }
-  int cgi2server_fd[2];
-  int server2cgi_fd[2];
-
-  if (pipe(cgi2server_fd) == -1 || pipe(server2cgi_fd) == -1) {
-    return 500;
+    close(server2cgi_fd_[0]);
+    close(cgi2server_fd_[1]);
+    write(server2cgi_fd_[1], form_data, std::strlen(form_data));
+    close(server2cgi_fd_[1]);
   }
 
-  pid_t pid = fork();
-  if (pid == -1) {
-    return 500;
-
-  } else if (pid == 0) {
-    close(server2cgi_fd[1]);
-    dup2(server2cgi_fd[0], STDIN_FILENO);
-    close(server2cgi_fd[0]);
-
-    close(cgi2server_fd[0]);
-    dup2(cgi2server_fd[1], STDOUT_FILENO);
-    close(cgi2server_fd[1]);
-
-    std::vector<char* const> envp;
-    if (response.request_.method_ == "GET\0") {
-      envp.push_back(SetEnv("REQUEST_METHOD=", "GET"));
-      envp.push_back(SetEnv("QUERY_STRING=",
-                            response.request_.uri_.query_string_.c_str()));
-
-    } else if (response.request_.method_ == "POST\0") {
-      envp.push_back(SetEnv("REQUEST_METHOD=", "POST"));
-      envp.push_back(SetEnv(
-          "CONTENT_LENGTH=",
-          std::to_string(response.request_.http_content_length_).c_str()));
-    }
-
-    execve(*argv.data(), argv.data(), envp.data());
-    // ERROR
-    std::exit(500);
-  } else {
-    int orig_stdin = dup(STDIN_FILENO);
-    int orig_stdout = dup(STDOUT_FILENO);
-
-    close(server2cgi_fd[0]);
-    dup2(server2cgi_fd[1], STDOUT_FILENO);
-    close(server2cgi_fd[1]);
-
-    write(STDOUT_FILENO, response.request_.body_.c_str(),
-          response.request_.http_content_length_);
-
-    close(cgi2server_fd[1]);
-    dup2(cgi2server_fd[0], STDIN_FILENO);
-    close(cgi2server_fd[0]);
-
-    char buffer[8192];
-    std::string cgi_response;
-
-    ssize_t count;
-    while ((count = read(STDIN_FILENO, buffer, sizeof(buffer))) > 0) {
-      cgi_response.append(buffer, count);
-    }
-
-    int status;
-    waitpid(pid, &status, 0);
-
-    dup2(orig_stdin, STDIN_FILENO);
-    dup2(orig_stdout, STDOUT_FILENO);
-    close(orig_stdin);
-    close(orig_stdout);
-
-    response.response_header_ +=
-        cgi_response.substr(0, cgi_response.find("\r\n\r\n") + 4);
-    response.response_body_ +=
-        cgi_response.substr(cgi_response.find("\r\n\r\n") + 4);
-  }
-
-  return 0;
+  return HTTP_OK;
 }

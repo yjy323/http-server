@@ -136,31 +136,51 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
     client.set_request_str(client.request_str() + buffer);
 
     if (size_t header_end =
-            client.request_str().find("\r\n\r\n") != std::string::npos) {
+            client.request_str().find(CRLF) != std::string::npos) {
       ssize_t offset = 0;
 
-      if (client.request_instance().ParseRequestHeader(
+      std::clog << " [ Request Message start ]  " << std::endl;
+      std::clog << client.request_str() << std::endl;
+      std::clog << " [ Request Message end ]  " << std::endl;
+
+      if (client.transaction_instance().ParseRequestHeader(
               client.request_str().c_str(), client.request_str().length(),
-              offset) == ERROR) {
+              offset) != HTTP_OK) {
         std::cerr << REQUEST_HEADER_PARSE_ERROR_MASSAGE << std::endl;
 
         std::clog << "[ Parse Error Request ]" << std::endl
                   << client.request_str() << std::endl;
+      } else {
+        const ServerConfiguration& sc =
+            client.server().ConfByHost(client.transaction().headers_in().host);
+        client.transaction_instance().GetConfiguration(sc);
 
-        CloseWithClient(client.fd());
+        if (client.transaction().method() == "GET" ||
+            IsReadFullBody(client.fd(), header_end)) {
+          client.transaction_instance().HttpProcess();
+          if (client.transaction().cgi().on()) {
+            pid_t pid = client.transaction_instance().ExecuteCgi();
+            if (pid > 0 &&
+                this->eh_.Regist(pid, EVFILT_PROC, EV_ONESHOT, 0, 0,
+                                 static_cast<void*>(&this->client_udata_)) ==
+                    ERROR) {
+              CloseWithClient(client.fd());
+              this->eh_.DeleteAll(client.fd());
 
-        return;
-      } else if (client.request_instance().method_ == "GET" ||
-                 IsReadyToSend(event.ident, header_end)) {
-        std::clog << "server[ " << client.server().fd() << " ]: client[ "
-                  << client.fd() << " ]의 Full 메세지 수신 완료" << std::endl;
-        std::clog << std::endl << " [ Full Request Start ] " << std::endl;
-        std::clog << client.request_str() << std::endl;
-        std::clog << std::endl << " [ Full Request End ] " << std::endl;
+              return;
+            }
+          }
+          client.set_response_str(
+              client.transaction_instance().CreateResponseMessage());
+          if (this->eh_.Regist(event.ident, EVFILT_WRITE, EV_ONESHOT, 0, 0,
+                               static_cast<void*>(&this->client_udata_)) ==
+              ERROR) {
+            CloseWithClient(client.fd());
+            this->eh_.DeleteAll(client.fd());
 
-        client.MakeResponse();
-        this->eh_.Regist(event.ident, EVFILT_WRITE, EV_ONESHOT, NOTE_SECONDS, 0,
-                         static_cast<void*>(&this->client_udata_));
+            return;
+          }
+        }
       }
     }
   } else {
@@ -172,19 +192,40 @@ void Multiplexer::HandleWriteEvent(struct kevent event) {
   Client& client = this->clients_[event.ident];
 
   std::clog << std::endl << " [ Response Start ] " << std::endl;
-  std::clog << client.response().response_message_ << std::endl;
+
+  std::clog << client.response_str() << std::endl;
   std::clog << std::endl << " [ Response End ] " << std::endl;
 
-  const std::string& response_message = client.response().response_message_;
-  send(client.fd(), response_message.c_str(), response_message.length(), 0);
+  send(client.fd(), client.response_str().c_str(),
+       client.response_str().length(), 0);
 }
 
 void Multiplexer::HandleCgiEvent(struct kevent event) {
-  (void)event;
-  // // cgi 처리
-  // int pid = -1 /* cgi 처리 */;
-  // RegistKevent(pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, 0, 0,
-  //              static_cast<void*>(&this->cgi_udata_));
+  Client& client = this->clients_[event.ident];
+  const Cgi& cgi = client.transaction_instance().cgi();
+  std::string cgi_res;
+  char buffer[BUFFER_SIZE];
+  ssize_t bytes_read;
+
+  while ((bytes_read = read(cgi.cgi2server_fd()[1], buffer, BUFFER_SIZE - 1)) >
+         0) {
+    buffer[BUFFER_SIZE - 1] = 0;
+
+    cgi_res += buffer;
+  }
+  if (bytes_read == -1) {
+    // todo: set 상태코드 error
+  } else {
+    client.transaction_instance().entity().ReadBuffer(cgi_res.c_str(),
+                                                      cgi_res.length());
+    client.transaction_instance().CreateResponseMessage();
+  }
+
+  if (this->eh_.Regist(event.ident, EVFILT_WRITE, EV_ONESHOT, 0, 0,
+                       static_cast<void*>(&this->client_udata_)) == ERROR) {
+    CloseWithClient(client.fd());
+    this->eh_.DeleteAll(client.fd());
+  }
 }
 
 int Multiplexer::ReadClientMessage(int client_fd, std::string& message) {
@@ -253,14 +294,14 @@ int Multiplexer::CloseWithClient(int client_fd) {
   return OK;
 }
 
-bool Multiplexer::IsReadyToSend(int client_fd, size_t header_offset) {
-  if (this->clients_[client_fd].request().http_content_length_ >
+bool Multiplexer::IsReadFullBody(int client_fd, size_t header_offset) {
+  if (this->clients_[client_fd].transaction().headers_in().content_length_n >
       0) {  // -1로 교체 예정
     ssize_t body_length =
         this->clients_[client_fd].request_str().length() - (header_offset + 4);
 
     if (body_length <
-        this->clients_[client_fd].request().http_content_length_) {
+        this->clients_[client_fd].transaction().headers_in().content_length_n) {
       return false;
     }
   }

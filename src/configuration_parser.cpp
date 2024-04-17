@@ -1,5 +1,7 @@
 #include "configuration_parser.hpp"
 
+#include <sstream>
+
 #include "file_reader.hpp"
 
 #define DEFAULT_PORT 8080
@@ -9,6 +11,7 @@
 #define DEFAULT_ERROR_PAGE std::map<int, std::string>()
 #define DEFAULT_CLIENT_MAX_BODY_SIZE "1M"
 #define DEFAULT_SERVER_ROOT "/www/static"
+#define EFAULT_LOCATION_ROOT ""
 #define DEFAULT_AUTO_INDEX false
 #define DEFAULT_INDEX "index.html"
 #define DEFAULT_ALLOWED_METHOD ConfigurationParser::getDefaultAllowedMethod()
@@ -101,7 +104,7 @@ int ConfigurationParser::Tokenize(const std::string& str,
 int ConfigurationParser::Parse(const Tokens& tokens,
                                Configuration& configuration) {
   Tokens serverTokens;
-  uint64_t contextDepth = 0;
+  unsigned int contextDepth = 0;
   bool blockOpenFlag = false;
   for (size_t idx = 0; idx < tokens.size(); idx++) {
     const Token token = tokens[idx];
@@ -160,12 +163,13 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
   bool auto_index = DEFAULT_AUTO_INDEX;
   std::string index = DEFAULT_INDEX;
 
+  std::set<std::string> parsed_directive;
   std::map<std::string, Tokens> locationTokenByPath;
   std::string locationPath;
   Tokens locationTokens;
   std::string directive;
   Tokens valueTokens;
-  uint64_t contextDepth = 0;
+  unsigned int contextDepth = 0;
   bool blockOpenFlag = false;
   bool locationPathFlag = false;
   bool locationBlockFlag = false;
@@ -184,6 +188,11 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
                           error_page, client_max_body_size, root, auto_index,
                           index) == ERROR)
         return ERROR;
+      if (parsed_directive.find(directive) != parsed_directive.end()) {
+        std::cerr << "\"" << directive << "\" directive is duplicate";
+        return ERROR;
+      }
+      parsed_directive.insert(directive);
       valueTokens.clear();
       directive = "";
       continue;
@@ -264,13 +273,14 @@ int ConfigurationParser::ParseLocation(
     ServerConfiguration::LocationConfiguration& locationConfiguartion) {
   std::map<int, std::string> error_page = serverConfiguration.error_page();
   std::string client_max_body_size = serverConfiguration.client_max_body_size();
-  std::string root = serverConfiguration.root();
+  std::string root = EFAULT_LOCATION_ROOT;
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
   std::set<std::string> allowed_method;
   std::string return_uri = DEFAULT_RETURN_URI;
   std::string upload_store = DEFAULT_UPLOAD_STORE;
 
+  std::set<std::string> parsed_directive;
   Token directive;
   Tokens valueTokens;
 
@@ -282,6 +292,11 @@ int ConfigurationParser::ParseLocation(
                             client_max_body_size, root, auto_index, index,
                             allowed_method, return_uri, upload_store) == ERROR)
         return ERROR;
+      if (parsed_directive.find(directive) != parsed_directive.end()) {
+        std::cerr << "\"" << directive << "\" directive is duplicate";
+        return ERROR;
+      }
+      parsed_directive.insert(directive);
       directive = "";
       valueTokens.clear();
 
@@ -373,7 +388,7 @@ int ConfigurationParser::ParsePort(int& port, const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
   if (!IsPort(valueTokens[0])) return ERROR;
 
-  port = atoi(valueTokens[0].c_str());
+  std::stringstream(valueTokens[0]) >> port;
 
   return OK;
 }
@@ -397,8 +412,11 @@ int ConfigurationParser::ParseError_page(std::map<int, std::string>& error_page,
        idx_error_code++) {
     if (!IsErrorCode(valueTokens[idx_error_code])) return ERROR;
 
-    error_page.insert(std::make_pair(atoi(valueTokens[idx_error_code].c_str()),
-                                     valueTokens[valueTokens.size() - 1]));
+    int error_code;
+    std::stringstream(valueTokens[idx_error_code]) >> error_code;
+
+    error_page.insert(
+        std::make_pair(error_code, valueTokens[valueTokens.size() - 1]));
   }
 
   return OK;

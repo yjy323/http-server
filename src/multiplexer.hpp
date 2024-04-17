@@ -7,8 +7,6 @@
 #include "client.hpp"
 #include "configuration.hpp"
 #include "event_handler.hpp"
-#include "request.hpp"
-#include "response.hpp"
 #include "server.hpp"
 
 class Multiplexer {
@@ -36,7 +34,7 @@ class Multiplexer {
   int AcceptWithClient(int server_fd);
   int CloseWithClient(int client_fd);
 
-  bool IsReadyToSend(int client_fd, size_t header_offset);
+  bool IsReadFullBody(int client_fd, size_t header_offset);
   bool IsExistPort(int port);
   void AddConfInServers(const ServerConfiguration& server_conf);
 

@@ -1,17 +1,9 @@
 #ifndef URI_HPP
 #define URI_HPP
 
-#include <cctype>
-#include <iostream>
-#include <list>
-#include <map>
-#include <sstream>
 #include <string>
-#include <vector>
 
-#include "abnf.hpp"
-#include "configuration.hpp"
-#include "utils.hpp"
+#include "http.hpp"
 
 class Uri {
  public:
@@ -22,11 +14,6 @@ class Uri {
     kAsteriskForm
   };
 
-  struct PathSegment {
-    std::string path;
-    std::map<const std::string, std::string> parameter;
-  };
-
   Uri();
   Uri(const Uri& obj);
   ~Uri();
@@ -35,6 +22,16 @@ class Uri {
   int ParseUriComponent(std::string& request_uri);
   int ReconstructTargetUri(std::string& request_host);
 
+  RequestTargetFrom request_target_form() const;
+  const std::string& request_target() const;
+  const std::string& scheme() const;
+  const std::string& user() const;
+  const std::string& password() const;
+  const std::string& host() const;
+  const std::string& path() const;
+  const std::string& query_string() const;
+
+ private:
   int ParseScheme(std::string& scheme);
   int ParseAuthority(std::string& authority);
   int ParsePathSegment(std::string& path_component);
@@ -47,7 +44,6 @@ class Uri {
   std::string user_;
   std::string password_;
   std::string host_;
-  int port_;
   std::string path_;
   std::string query_string_;
 };
