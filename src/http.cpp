@@ -103,10 +103,10 @@ const std::string HttpInsertHeader(std::map<HeaderKey, HeaderValue>& headers,
 int HttpHost(HeadersIn& headers_in, std::string value) {
   if (value.size() == 0 || !IsHost(value)) {
     return HTTP_BAD_REQUEST;
-  } else if (headers_in.host_ != "") {
+  } else if (headers_in.host != "") {
     return HTTP_BAD_REQUEST;
   } else {
-    headers_in.host_ = value;
+    headers_in.host = value;
     return HTTP_OK;
   }
 }
@@ -115,11 +115,11 @@ int HttpContentLength(HeadersIn& headers_in, std::string value) {
   char* end_ptr;
 
   ssize_t content_length_n = strtol(value.c_str(), &end_ptr, 10);
-  if (headers_in.content_length_ != "" || end_ptr == value || *end_ptr != 0) {
+  if (headers_in.content_length != "" || end_ptr == value || *end_ptr != 0) {
     return HTTP_BAD_REQUEST;
   } else {
-    headers_in.content_length_ = value;
-    headers_in.content_length_n_ = content_length_n;
+    headers_in.content_length = value;
+    headers_in.content_length_n = content_length_n;
     return HTTP_OK;
   }
 }
@@ -130,7 +130,7 @@ int HttpTransferEncoding(HeadersIn& headers_in, std::string value) {
   } else if (ToCaseInsensitive(Trim(value)) != "chunked") {
     return HTTP_NOT_IMPLEMENTED;
   } else {
-    headers_in.transfer_encoding_ = value;
+    headers_in.transfer_encoding = value;
     headers_in.chuncked = true;
     return HTTP_OK;
   }

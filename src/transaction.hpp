@@ -24,16 +24,9 @@ class Transaction {
   int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
 
   // Response
-  int HttpGetMethod();
-  int HttpPostMethod();
-  int HttpDeleteMethod();
-
-  std::string GetTargetResource();
-  bool IsAllowedMethod();
-  bool IsRedirectedUri();
-
-  void SetCgiEnv();
-  void FreeCgiEnv();
+  int HttpProcess();
+  pid_t ExecuteCgi();
+  std::string CreateResponseMessage();
 
   /*
         Getters
@@ -47,10 +40,16 @@ class Transaction {
   int status_code();
 
  private:
-  void Test();
   int ParseRequestLine(std::string& request_line);
   int ParseFieldValue(std::string& header);
   int DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset);
+
+  int HttpGet();
+  int HttpPost();
+  int HttpDelete();
+
+  void SetCgiEnv();
+  void FreeCgiEnv();
 
   // Request Context
   Configuration config_;
@@ -65,6 +64,7 @@ class Transaction {
   int status_code_;
   std::string target_resource_;
   HeadersOut headers_out_;
+  std::string body_out_;
   Entity entity_;
   Cgi cgi_;
 };

@@ -22,6 +22,8 @@ class Cgi {
  public:
   Cgi();
   ~Cgi();
+  Cgi(const Cgi& obj);
+  Cgi& operator=(const Cgi& obj);
 
   static bool IsSupportedCgi(const char*);
   int ExecuteCgi(const char*, const char*, const char*);
@@ -37,9 +39,6 @@ class Cgi {
   bool on();
 
  private:
-  Cgi(const Cgi& obj);
-  Cgi& operator=(const Cgi& obj);
-
   bool IsCgiProgram(const char*);
   bool IsCgiScript(const char*);
 

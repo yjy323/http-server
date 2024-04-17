@@ -7,11 +7,6 @@
 
 #define CRLF "\r\n"
 
-#define IF_BAD_HEADER_THEN_RETURN(HeaderFunc) \
-  if (HeaderFunc == HTTP_BAD_REQUEST) {       \
-    return HTTP_BAD_REQUEST;                  \
-  }
-
 #define HTTP_GET_METHOD "GET\0"
 #define HTTP_POST_METHOD "POST\0"
 #define HTTP_DELETE_METHOD "DELETE\0"
@@ -104,44 +99,44 @@ typedef std::map<HeaderKey, HeaderValue>::const_iterator HeadersConstIterator;
 struct HeadersIn {
   std::map<HeaderKey, HeaderValue> headers_;
 
-  std::string host_;
-  std::string connection_;
-  std::string if_modified_since_;
-  std::string if_unmodified_since_;
-  std::string if_match_;
-  std::string if_none_match_;
-  std::string user_agent_;
-  std::string referer_;
-  std::string content_length_;
-  std::string content_range_;
-  std::string content_type_;
+  std::string host;
+  std::string connection;
+  std::string if_modified_since;
+  std::string if_unmodified_since;
+  std::string if_match;
+  std::string if_none_match;
+  std::string user_agent;
+  std::string referer;
+  std::string content_length;
+  std::string content_range;
+  std::string content_type;
 
-  std::string range_;
-  std::string if_range_;
+  std::string range;
+  std::string if_range;
 
-  std::string transfer_encoding_;
-  std::string te_;
-  std::string expect_;
-  std::string upgrade_;
+  std::string transfer_encoding;
+  std::string te;
+  std::string expect;
+  std::string upgrade;
 
-  ssize_t content_length_n_;
+  ssize_t content_length_n;
   bool chuncked;
 };
 
 struct HeadersOut {
-  std::string server_;
-  std::string date_;
-  std::string content_length_;
-  std::string content_encoding_;
-  std::string content_type_;
-  std::string location_;
-  std::string refresh_;
-  std::string last_modified_;
-  std::string content_range_;
-  std::string accept_ranges_;
-  std::string www_authenticate_;
-  std::string expires_;
-  std::string etag_;
+  std::string server;
+  std::string date;
+  std::string content_length;
+  std::string content_encoding;
+  std::string content_type;
+  std::string location;
+  std::string refresh;
+  std::string last_modified;
+  std::string content_range;
+  std::string accept_ranges;
+  std::string www_authenticate;
+  std::string expires;
+  std::string etag;
 };
 
 const char* HttpGetReasonPhase(int status_code);
