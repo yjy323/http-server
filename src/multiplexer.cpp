@@ -17,6 +17,8 @@
 #define CLIENT_UDATA (1 << 1)
 #define CGI_UDATA (1 << 1)
 
+#define REQUEST_HEADER_END CRLF CRLF
+
 #define KQUEUE_ERROR_MASSAGE "kqueue() failed."
 #define KEVENT_ERROR_MASSAGE "kevent() failed."
 #define RECV_ERROR_MASSAGE "recv() from client failed."
@@ -135,8 +137,8 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
 
     client.set_request_str(client.request_str() + buffer);
 
-    if (size_t header_end =
-            client.request_str().find(CRLF) != std::string::npos) {
+    if (size_t header_end = client.request_str().find(REQUEST_HEADER_END) !=
+                            std::string::npos) {
       ssize_t offset = 0;
 
       std::clog << " [ Request Message start ]  " << std::endl;
@@ -158,8 +160,10 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
         std::clog << "[ Parse Error Request ]" << std::endl
                   << client.request_str() << std::endl;
       } else {
-        if (client.transaction().method() == "GET" ||
-            IsReadFullBody(client.fd(), header_end)) {
+        std::string request_body = client.request_str().substr(
+            client.request_str().find(REQUEST_HEADER_END) +
+            std::strlen(REQUEST_HEADER_END));
+        if (IsReadFullBody(client, request_body)) {
           client.transaction_instance().HttpProcess();
           if (client.transaction().cgi().on()) {
             pid_t pid = client.transaction_instance().ExecuteCgi();
@@ -297,15 +301,31 @@ int Multiplexer::CloseWithClient(int client_fd) {
   return OK;
 }
 
-bool Multiplexer::IsReadFullBody(int client_fd, size_t header_offset) {
-  if (this->clients_[client_fd].transaction().headers_in().content_length_n >
-      0) {  // -1로 교체 예정
-    ssize_t body_length =
-        this->clients_[client_fd].request_str().length() - (header_offset + 4);
+bool Multiplexer::IsReadFullBody(const Client& client,
+                                 const std::string& request_body) {
+  const HeadersIn& headers_in = client.transaction().headers_in();
+  const ServerConfiguration::LocationConfiguration& config =
+      client.transaction().config();
 
-    if (body_length <
-        this->clients_[client_fd].transaction().headers_in().content_length_n) {
+  if (IsRequestBodyAllowed(client.transaction().method())) {
+    return true;
+  }
+
+  if (headers_in.content_length_n >= 0) {
+    if (request_body.length() >
+        static_cast<size_t>(config.client_max_body_size())) {
+      // todo: http_satus = HTTP_REQUEST_ENTITY_TOO_LARGE
+    } else if (request_body.length() <
+               static_cast<size_t>(headers_in.content_length_n)) {
       return false;
+    }
+  } else if (headers_in.transfer_encoding == "chunked") {
+    if (request_body.find("0" CRLF) == std::string::npos) {
+      return false;
+    }
+  } else {
+    if (request_body.length() > 0) {
+      // todo: http_satus = HTTP_LENGTH_REQUIRED
     }
   }
 
@@ -330,6 +350,12 @@ bool Multiplexer::IsExistPort(int port) {
   }
 
   return false;
+}
+
+bool Multiplexer::IsRequestBodyAllowed(const std::string& method) {
+  if (method == "GET" || method == "DELETE") return false;
+
+  return true;
 }
 
 Server& Multiplexer::ServerInstanceByPort(int port) {
