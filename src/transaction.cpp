@@ -232,7 +232,7 @@ const Transaction::Configuration& Transaction::GetConfiguration(
     const ServerConfiguration& server_config) {
   typedef std::map<std::string, Configuration>::const_iterator
       ConfigurationIterator;
-  std::string request_target = uri_.request_target();
+  std::string request_target = uri_.decoded_request_target();
   size_t request_target_len = request_target.length();
   size_t max_common_length = 0;
 
@@ -296,7 +296,7 @@ int Transaction::HttpGet() {
       RETURN_STATUS_CODE HttpGet();
     } else if (config_.auto_index()) {
       entity_.CreateDirectoryListingPage(target_resource_.c_str(),
-                                         uri_.request_target().c_str());
+                                         uri_.decoded_request_target().c_str());
       SetEntityHeaders();
       RETURN_STATUS_CODE HTTP_OK;
     } else {
@@ -350,7 +350,7 @@ int Transaction::HttpDelete() {
   if (std::remove(this->target_resource_.c_str()) != 0) {
     RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
   }
-  body_out_ = entity_.CreatePage("DELETED: " + uri_.request_target());
+  body_out_ = entity_.CreatePage("DELETED: " + uri_.decoded_request_target());
   RETURN_STATUS_CODE HTTP_OK;
 }
 
@@ -367,7 +367,7 @@ int Transaction::HttpProcess() {
     RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
   }
 
-  target_resource_ = "." + config_.root() + uri_.request_target();
+  target_resource_ = "." + config_.root() + uri_.decoded_request_target();
 
   if (config_.allowed_method().find(method_) ==
       config_.allowed_method().end()) {
