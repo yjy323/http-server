@@ -55,10 +55,12 @@ class Transaction {
   void SetCgiEnv();
   void FreeCgiEnv();
 
+  void SetAllowdMethod();
   void SetEntityHeaders();
   std::string AppendStatusLine();
   std::string AppendResponseHeader(const std::string key,
                                    const std::string value);
+  void SetErrorPage();
 
   // Request Context
   Configuration config_;

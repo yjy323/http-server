@@ -132,7 +132,7 @@ std::string Entity::CreatePage(std::string body_line) {
       "<center><h1>" +
       body_line +
       "</h1></center>\n"
-      "<hr><center>nginx/1.25.4</center>\n"
+      "<hr><center>webserv</center>\n"
       "</body>\n"
       "</html>";
   mime_type_ = GetMimeType("html");

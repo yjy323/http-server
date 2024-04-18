@@ -254,6 +254,16 @@ const Transaction::Configuration& Transaction::GetConfiguration(
   return config_;
 }
 
+void Transaction::SetAllowdMethod() {
+  typedef std::set<std::string>::const_iterator METHOD_ITER;
+  size_t method_cnt = config_.allowed_method().size();
+  METHOD_ITER method = config_.allowed_method().begin();
+  headers_out_.allow = "";
+  for (size_t i = 0; i < method_cnt; ++i) {
+    headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
+  }
+}
+
 void Transaction::SetEntityHeaders() {
   body_out_ = entity_.body();
   headers_out_.content_type = entity_.mime_type();
@@ -337,13 +347,7 @@ int Transaction::HttpProcess() {
 
   if (config_.allowed_method().find(method_) ==
       config_.allowed_method().end()) {
-    typedef std::set<std::string>::const_iterator METHOD_ITER;
-    size_t method_cnt = config_.allowed_method().size();
-    METHOD_ITER method = config_.allowed_method().begin();
-    headers_out_.allow = "";
-    for (size_t i = 0; i < method_cnt; ++i) {
-      headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
-    }
+    SetAllowdMethod();
     RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
   }
 
@@ -404,6 +408,20 @@ std::string Transaction::AppendResponseHeader(const std::string key,
   return response_ += key + ": " + value + CRLF;
 }
 
+void Transaction::SetErrorPage() {
+  static const std::string ERROR_PAGE_PATH =
+      "." + config_.root() + "/" + config_.error_page();
+  if (config_.error_page() != "" &&
+      entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
+    entity_.ReadFile(ERROR_PAGE_PATH.c_str());
+  } else {
+    static const std::string STATUS =
+        std::to_string(status_code_) + " " + HttpGetReasonPhase(status_code_);
+    entity_.CreatePage(STATUS);
+  }
+  SetEntityHeaders();
+}
+
 std::string Transaction::CreateResponseMessage() {
   /*
         The "Date" header field represents the date and time at which the
@@ -431,10 +449,7 @@ std::string Transaction::CreateResponseMessage() {
     case HTTP_CLIENT_ERROR:
     case HTTP_SERVER_ERROR:
       // ERROR Page
-      static const std::string STATUS =
-          std::to_string(status_code_) + " " + HttpGetReasonPhase(status_code_);
-      entity_.CreatePage(STATUS);
-      SetEntityHeaders();
+      SetErrorPage();
       AppendResponseHeader("Content-Type", headers_out_.content_type);
       AppendResponseHeader("Content-Length", headers_out_.content_length);
       break;
