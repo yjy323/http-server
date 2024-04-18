@@ -33,6 +33,7 @@ class Transaction {
   */
   const Configuration& config() const;
   const Uri& uri() const;
+  Uri& uri();
   const Entity& entity() const;
   Entity& entity();
   const Cgi& cgi() const;

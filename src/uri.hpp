@@ -19,8 +19,8 @@ class Uri {
   ~Uri();
   Uri& operator=(const Uri& obj);
 
-  int ParseUriComponent(std::string& request_uri);
-  int ReconstructTargetUri(std::string& request_host);
+  int ParseUriComponent(std::string request_uri);
+  int ReconstructTargetUri(std::string request_host);
 
   RequestTargetFrom request_target_form() const;
   const std::string& request_target() const;

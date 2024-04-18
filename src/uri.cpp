@@ -173,7 +173,7 @@ int Uri::ParseQuery(std::string& query) {
   return HTTP_OK;
 }
 
-int Uri::ParseUriComponent(std::string& request_uri) {
+int Uri::ParseUriComponent(std::string request_uri) {
   /*
                 absolute-form = absolute-URI
                 absolute-URI = scheme ":" hier-part [ "?" query ]
@@ -217,7 +217,7 @@ int Uri::ParseUriComponent(std::string& request_uri) {
   return HTTP_OK;
 }
 
-int Uri::ReconstructTargetUri(std::string& request_host) {
+int Uri::ReconstructTargetUri(std::string request_host) {
   if (this->request_target_form_ == kOriginForm) {
     this->scheme_ = "http";
     this->host_ = request_host;
