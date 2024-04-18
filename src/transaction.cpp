@@ -71,7 +71,12 @@ const std::string& Transaction::body() const { return this->body_in_; }
 const Transaction::Configuration& Transaction::config() const {
   return this->config_;
 }
-int Transaction::status_code() { return this->status_code_; }
+const int& Transaction::status_code() const { return this->status_code_; }
+
+void Transaction::set_status_code(const int& status_code) {
+  this->status_code_ = status_code;
+}
+
 const HeadersOut& Transaction::headers_out() const {
   return this->headers_out_;
 }
