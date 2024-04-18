@@ -286,14 +286,14 @@ int Transaction::HttpGet() {
   }
   entity_ = Entity(target_resource_);
   if (entity_.type() == Entity::kDirectory) {
-    if (config_.auto_index()) {
+    if (config_.index() != "") {
+      target_resource_ = "." + config_.root() + "/" + config_.index();
+      RETURN_STATUS_CODE HttpGet();
+    } else if (config_.auto_index()) {
       entity_.CreateDirectoryListingPage(target_resource_.c_str(),
                                          uri_.request_target().c_str());
       SetEntityHeaders();
       RETURN_STATUS_CODE HTTP_OK;
-    } else if (config_.index() != "") {
-      target_resource_ = "." + config_.root() + "/" + config_.index();
-      RETURN_STATUS_CODE HttpGet();
     } else {
       RETURN_STATUS_CODE HTTP_FORBIDDEN;
     }

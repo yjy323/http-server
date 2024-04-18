@@ -14,7 +14,7 @@
 #define DEFAULT_SERVER_ROOT "/www/static"
 #define EFAULT_LOCATION_ROOT ""
 #define DEFAULT_AUTO_INDEX false
-#define DEFAULT_INDEX "index.html"
+#define DEFAULT_INDEX ""
 #define DEFAULT_ALLOWED_METHOD ConfigurationParser::getDefaultAllowedMethod()
 #define DEFAULT_RETURN_URI ""
 #define DEFAULT_UPLOAD_STORE "/upload"
