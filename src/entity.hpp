@@ -1,9 +1,11 @@
 #ifndef ENTITY_HPP
 #define ENTITY_HPP
 
+#include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cstring>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -24,7 +26,8 @@ class Entity {
   static bool IsFileExecutable(const char* path);
 
   std::string CreatePage(std::string body_line);
-  std::string CreateDirectoryListingPage();
+  std::string CreateDirectoryListingPage(std::string path,
+                                         std::string request_target);
   std::string ReadFile(const char* path);
   void ReadBuffer(const char* buff, size_t size);
 
