@@ -35,8 +35,8 @@ class Cgi {
   std::vector<char* const>& envp();
   const int* cgi2server_fd() const;
   const int* server2cgi_fd() const;
-  pid_t pid();
-  bool on();
+  pid_t pid() const;
+  bool on() const;
 
  private:
   bool IsCgiProgram(const char*);

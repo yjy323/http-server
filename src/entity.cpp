@@ -91,7 +91,7 @@ Entity::eType Entity::GetType(std::string path) {
   }
 }
 std::string Entity::GetExtension(std::string path) {
-  size_t delimiter_pos = path.find(".");
+  size_t delimiter_pos = path.rfind(".");
   if (delimiter_pos == path.npos) {
     extension_ = "";
   } else {
@@ -151,4 +151,7 @@ std::string Entity::ReadFile(const char* path) {
   return body_;
 }
 
-// void Entity::ReadBuffer(const char*, size_t size) {}
+void Entity::ReadBuffer(const char* buff, size_t size) {
+  (void)buff;
+  (void)size;
+}

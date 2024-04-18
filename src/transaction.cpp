@@ -62,6 +62,9 @@ Transaction& Transaction::operator=(const Transaction& obj) {
 */
 const std::string& Transaction::method() const { return this->method_; }
 const Uri& Transaction::uri() const { return this->uri_; }
+const Entity& Transaction::entity() const { return this->entity_; }
+Entity& Transaction::entity() { return this->entity_; }
+const Cgi& Transaction::cgi() const { return this->cgi_; }
 const HeadersIn& Transaction::headers_in() const { return this->headers_in_; }
 const std::string& Transaction::body() const { return this->body_in_; }
 const Transaction::Configuration& Transaction::config() const {
@@ -252,12 +255,13 @@ const Transaction::Configuration& Transaction::GetConfiguration(
 
 void Transaction::SetEntityHeaders() {
   body_out_ = entity_.body();
-  headers_out_.content_type = entity_.type();
+  headers_out_.content_type = entity_.mime_type();
   headers_out_.content_length = entity_.length();
   headers_out_.last_modified = entity_.modified_s();
 }
 
 int Transaction::HttpProcess() {
+  uri_.ReconstructTargetUri(headers_in_.host);
   if (uri_.request_target() == config_.return_uri()) {
     headers_out_.location = config_.return_uri();
     RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
@@ -265,7 +269,7 @@ int Transaction::HttpProcess() {
 
   target_resource_ = "." + config_.root() + uri_.request_target();
 
-  if (config_.allowed_method().find(method_) !=
+  if (config_.allowed_method().find(method_) ==
       config_.allowed_method().end()) {
     typedef std::set<std::string>::const_iterator METHOD_ITER;
     size_t method_cnt = config_.allowed_method().size();
@@ -401,7 +405,6 @@ std::string Transaction::AppendResponseHeader(const std::string key,
 }
 
 std::string Transaction::CreateResponseMessage() {
-  std::string response = "";
   /*
         The "Date" header field represents the date and time at which the
         message was originated. Section 6.6.1 of [HTTP]
@@ -448,7 +451,7 @@ std::string Transaction::CreateResponseMessage() {
       break;
   }
 
-  response += CRLF;
-  response += body_out_;
-  return response;
+  response_ += CRLF;
+  response_ += body_out_;
+  return response_;
 }

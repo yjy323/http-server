@@ -37,8 +37,8 @@ std::vector<char* const>& Cgi::envp() { return this->envp_; }
 
 const int* Cgi::cgi2server_fd() const { return this->cgi2server_fd_; }
 const int* Cgi::server2cgi_fd() const { return this->server2cgi_fd_; }
-pid_t Cgi::pid() { return this->pid_; }
-bool Cgi::on() { return this->on_; }
+pid_t Cgi::pid() const { return this->pid_; }
+bool Cgi::on() const { return this->on_; }
 
 bool Cgi::TurnOn() {
   on_ = true;
@@ -46,8 +46,8 @@ bool Cgi::TurnOn() {
 }
 
 bool Cgi::IsSupportedCgi(const char* extension) {
-  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) ||
-      std::strncmp(extension, CGI_FILE, std::strlen(PY_FILE) + 1)) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) == 0 ||
+      std::strncmp(extension, PY_FILE, std::strlen(PY_FILE) + 1) == 0) {
     return true;
   } else {
     return false;
@@ -55,7 +55,7 @@ bool Cgi::IsSupportedCgi(const char* extension) {
 }
 
 bool Cgi::IsCgiProgram(const char* extension) {
-  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1)) {
+  if (std::strncmp(extension, CGI_FILE, std::strlen(CGI_FILE) + 1) == 0) {
     return true;
   } else {
     return false;

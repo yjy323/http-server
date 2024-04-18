@@ -26,7 +26,7 @@ class Entity {
   std::string CreatePage(std::string body_line);
   std::string CreateDirectoryListingPage();
   std::string ReadFile(const char* path);
-  std::string ReadBuffer(const char* buff, size_t size);
+  void ReadBuffer(const char* buff, size_t size);
 
   std::string path() const;
   eType type();

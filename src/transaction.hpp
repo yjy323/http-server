@@ -33,6 +33,9 @@ class Transaction {
   */
   const Configuration& config() const;
   const Uri& uri() const;
+  const Entity& entity() const;
+  Entity& entity();
+  const Cgi& cgi() const;
   const std::string& method() const;
   const HeadersIn& headers_in() const;
   const HeadersOut& headers_out() const;
