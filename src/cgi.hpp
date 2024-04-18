@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -12,9 +13,6 @@
 #include <vector>
 
 #include "http.hpp"
-
-#define CGI_FILE "cgi\0"
-#define PY_FILE "py\0"
 
 class Response;
 

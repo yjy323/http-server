@@ -1,10 +1,7 @@
 #include "cgi.hpp"
 
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
+#define CGI_FILE ".cgi\0"
+#define PY_FILE ".py\0"
 
 Cgi::Cgi()
     : argv_(std::vector<char* const>()),
@@ -112,6 +109,7 @@ pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
   } else {
     close(server2cgi_fd_[0]);
     close(cgi2server_fd_[1]);
+    // while()
     write(server2cgi_fd_[1], form_data, std::strlen(form_data));
     close(server2cgi_fd_[1]);
   }

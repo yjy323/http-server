@@ -232,22 +232,31 @@ const Transaction::Configuration& Transaction::GetConfiguration(
     const ServerConfiguration& server_config) {
   typedef std::map<std::string, Configuration>::const_iterator
       ConfigurationIterator;
-
-  size_t max_match_pos = 0;
+  std::string request_target = uri_.request_target();
+  size_t request_target_len = request_target.length();
+  size_t max_common_length = 0;
 
   for (ConfigurationIterator it = server_config.location().begin();
        it != server_config.location().end(); ++it) {
     std::string key = it->first;
-    size_t match_pos = uri_.request_target().find(key);
-    if (match_pos == uri_.request_target().npos && max_match_pos != 0) {
-      break;
-    } else if (match_pos == 0 && max_match_pos < key.length()) {
-      config_ = it->second;
-      max_match_pos = key.length();
+    if (request_target.find(key) != request_target.npos) {
+      size_t common_length = 0;
+      size_t min_length = std::min(key.length(), request_target_len);
+      for (size_t i = 0; i < min_length; ++i) {
+        if (key[i] == request_target[i]) {
+          common_length++;
+        } else {
+          break;
+        }
+      }
+      if (common_length > max_common_length) {
+        config_ = it->second;
+        max_common_length = common_length;
+      }
     }
   }
 
-  if (max_match_pos == 0) {
+  if (max_common_length == 0) {
     std::set<std::string> default_allowed_method;
     default_allowed_method.insert("GET");
 
@@ -257,6 +266,16 @@ const Transaction::Configuration& Transaction::GetConfiguration(
         default_allowed_method, "", "");
   }
   return config_;
+}
+
+void Transaction::SetAllowdMethod() {
+  typedef std::set<std::string>::const_iterator METHOD_ITER;
+  size_t method_cnt = config_.allowed_method().size();
+  METHOD_ITER method = config_.allowed_method().begin();
+  headers_out_.allow = "";
+  for (size_t i = 0; i < method_cnt; ++i) {
+    headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
+  }
 }
 
 void Transaction::SetEntityHeaders() {
@@ -271,8 +290,19 @@ int Transaction::HttpGet() {
     RETURN_STATUS_CODE HTTP_NOT_FOUND;
   }
   entity_ = Entity(target_resource_);
-
-  if (Cgi::IsSupportedCgi(entity_.extension().c_str())) {
+  if (entity_.type() == Entity::kDirectory) {
+    if (config_.index() != "") {
+      target_resource_ = "." + config_.root() + "/" + config_.index();
+      RETURN_STATUS_CODE HttpGet();
+    } else if (config_.auto_index()) {
+      entity_.CreateDirectoryListingPage(target_resource_.c_str(),
+                                         uri_.request_target().c_str());
+      SetEntityHeaders();
+      RETURN_STATUS_CODE HTTP_OK;
+    } else {
+      RETURN_STATUS_CODE HTTP_FORBIDDEN;
+    }
+  } else if (Cgi::IsSupportedCgi(entity_.extension().c_str())) {
     if (Entity::IsFileExecutable(target_resource_.c_str())) {
       cgi_.TurnOn();
       RETURN_STATUS_CODE HTTP_OK;
@@ -296,13 +326,12 @@ int Transaction::HttpPost() {
   }
 
   entity_ = Entity(target_resource_);
-  if (Cgi::IsSupportedCgi(entity_.extension().c_str())) {
-    if (Entity::IsFileExecutable(target_resource_.c_str())) {
-      cgi_.TurnOn();
-      RETURN_STATUS_CODE HTTP_OK;
-    } else {
-      RETURN_STATUS_CODE HTTP_FORBIDDEN;
-    }
+  if (entity_.type() == Entity::kDirectory) {
+    RETURN_STATUS_CODE HTTP_FORBIDDEN;
+  } else if (Cgi::IsSupportedCgi(entity_.extension().c_str()) &&
+             Entity::IsFileExecutable(target_resource_.c_str())) {
+    cgi_.TurnOn();
+    RETURN_STATUS_CODE HTTP_OK;
   } else {
     RETURN_STATUS_CODE HTTP_FORBIDDEN;
   }
@@ -333,8 +362,8 @@ char* SetEnv(const char* key, const char* value) {
 }
 
 int Transaction::HttpProcess() {
-  if (uri_.request_target() == config_.return_uri()) {
-    headers_out_.location = config_.return_uri();
+  if (config_.return_uri() != "") {
+    headers_out_.location = "/" + config_.return_uri();
     RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
   }
 
@@ -342,13 +371,7 @@ int Transaction::HttpProcess() {
 
   if (config_.allowed_method().find(method_) ==
       config_.allowed_method().end()) {
-    typedef std::set<std::string>::const_iterator METHOD_ITER;
-    size_t method_cnt = config_.allowed_method().size();
-    METHOD_ITER method = config_.allowed_method().begin();
-    headers_out_.allow = "";
-    for (size_t i = 0; i < method_cnt; ++i) {
-      headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
-    }
+    SetAllowdMethod();
     RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
   }
 
@@ -406,7 +429,24 @@ std::string Transaction::AppendStatusLine() {
 }
 std::string Transaction::AppendResponseHeader(const std::string key,
                                               const std::string value) {
+  if (value == "") {
+    return "";
+  }
   return response_ += key + ": " + value + CRLF;
+}
+
+void Transaction::SetErrorPage() {
+  static const std::string ERROR_PAGE_PATH =
+      "." + config_.root() + "/" + config_.error_page();
+  if (config_.error_page() != "" &&
+      entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
+    entity_.ReadFile(ERROR_PAGE_PATH.c_str());
+  } else {
+    static const std::string STATUS =
+        std::to_string(status_code_) + " " + HttpGetReasonPhase(status_code_);
+    entity_.CreatePage(STATUS);
+  }
+  SetEntityHeaders();
 }
 
 std::string Transaction::CreateResponseMessage() {
@@ -436,10 +476,7 @@ std::string Transaction::CreateResponseMessage() {
     case HTTP_CLIENT_ERROR:
     case HTTP_SERVER_ERROR:
       // ERROR Page
-      static const std::string STATUS =
-          std::to_string(status_code_) + " " + HttpGetReasonPhase(status_code_);
-      entity_.CreatePage(STATUS);
-      SetEntityHeaders();
+      SetErrorPage();
       AppendResponseHeader("Content-Type", headers_out_.content_type);
       AppendResponseHeader("Content-Length", headers_out_.content_length);
       break;

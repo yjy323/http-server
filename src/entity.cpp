@@ -2,6 +2,9 @@
 
 #include "utils.hpp"
 
+#define HTML_FILE ".html\0"
+#define CSS_FILE ".css\0"
+
 Entity::Entity()
     : path_(""),
       type_(kFile),
@@ -84,7 +87,7 @@ std::string Entity::GetContents(std::string path) {
 }
 
 Entity::eType Entity::GetType(std::string path) {
-  if (path.size() != 0 && *path.end() == '/') {
+  if (path.size() != 0 && path[path.size() - 1] == '/') {
     return kDirectory;
   } else {
     return kFile;
@@ -95,15 +98,15 @@ std::string Entity::GetExtension(std::string path) {
   if (delimiter_pos == path.npos) {
     extension_ = "";
   } else {
-    extension_ = path.substr(delimiter_pos + 1);
+    extension_ = path.substr(delimiter_pos);
   }
   return extension_;
 }
 
 std::string Entity::GetMimeType(std::string extension) {
-  if (extension == "html") {
+  if (extension == HTML_FILE) {
     mime_type_ = "text/html";
-  } else if (extension == "css") {
+  } else if (extension == CSS_FILE) {
     mime_type_ = "text/css";
   } else {
     mime_type_ = "text/plain";
@@ -132,15 +135,66 @@ std::string Entity::CreatePage(std::string body_line) {
       "<center><h1>" +
       body_line +
       "</h1></center>\n"
-      "<hr><center>nginx/1.25.4</center>\n"
+      "<hr><center>webserv</center>\n"
       "</body>\n"
       "</html>";
-  mime_type_ = GetMimeType("html");
+  mime_type_ = GetMimeType(HTML_FILE);
   length_n_ = body_.size();
   length_ = std::to_string(length_n_);
   return body_;
 }
-// void CreateDirectoryListingPage();
+std::string Entity::CreateDirectoryListingPage(std::string path,
+                                               std::string request_target) {
+  std::stringstream html;
+  html << "<!DOCTYPE html>\n";
+  html << "<html>\n";
+  html << "<head><title>Index of " << request_target << "</title></head>\n";
+  html << "<body>\n";
+  html << "<h1>Index of " << request_target << "</h1><hr><pre>\n";
+
+  html << "<a href=\"../\">../</a>\n";
+
+  DIR* dir;
+  struct dirent* entry;
+  struct stat fileStat;
+
+  if ((dir = opendir(path.c_str())) != NULL) {
+    while ((entry = readdir(dir)) != NULL) {
+      std::string filename = entry->d_name;
+      if (filename != "." && filename != "..") {
+        std::string filepath = path + "/" + filename;
+        if (stat(filepath.c_str(), &fileStat) == 0) {
+          if (S_ISDIR(fileStat.st_mode)) {
+            filename += "/";
+          }
+          html << "<a href=\"" << filename << "\">" << filename << "</a>\t";
+          html << std::right << std::setw(10)
+               << std::put_time(std::localtime(&fileStat.st_mtime),
+                                "%d-%b-%Y %H:%M")
+               << "\t";
+          if (S_ISDIR(fileStat.st_mode)) {
+            html << std::setw(10) << "--\t";
+          } else {
+            html << std::setw(10) << fileStat.st_size << "\t";
+          }
+          html << "\n";
+        }
+      }
+    }
+    closedir(dir);
+  } else {
+    html << "<p>Error opening directory</p>\n";
+  }
+
+  html << "</pre><hr></body>\n";
+  html << "</html>\n";
+
+  body_ = html.str();
+  mime_type_ = GetMimeType(HTML_FILE);
+  length_n_ = body_.size();
+  length_ = std::to_string(length_n_);
+  return body_;
+}
 
 std::string Entity::ReadFile(const char* path) {
   body_ = GetContents(path);
