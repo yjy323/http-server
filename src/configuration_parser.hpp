@@ -40,13 +40,13 @@ class ConfigurationParser {
 
   static int ParseServerLine(const Token& directive, const Tokens& valueTokens,
                              int& port, std::set<std::string>& server_names,
-                             std::map<int, std::string>& error_page,
+                             std::string& error_page,
                              std::string& client_max_body_size,
                              std::string& root, bool& auto_index,
                              std::string& index);
   static int ParseLocationLine(
       const Token& directive, const Tokens& valueTokens,
-      std::map<int, std::string>& error_page, std::string& client_max_body_size,
+      std::string& error_page, std::string& client_max_body_size,
       std::string& root, bool& auto_index, std::string& index,
       std::set<std::string>& allowed_method, std::string& return_uri,
       std::string& upload_store);
@@ -54,7 +54,7 @@ class ConfigurationParser {
   static int ParsePort(int& port, const Tokens& valueTokens);
   static int ParseServer_names(std::set<std::string>& server_names,
                                const Tokens& valueTokens);
-  static int ParseError_page(std::map<int, std::string>& error_page,
+  static int ParseError_page(std::string& error_page,
                              const Tokens& valueTokens);
   static int ParseClient_max_body_size(std::string& client_max_body_size,
                                        const Tokens& valueTokens);
@@ -75,7 +75,6 @@ class ConfigurationParser {
   static std::set<std::string> getDefaultAllowedMethod();
 
   static bool IsPort(const std::string& port);
-  static bool IsErrorCode(const std::string& error_code);
   static bool IsAutoIndex(const std::string& auto_index);
 };
 
