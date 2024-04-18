@@ -9,7 +9,7 @@
 #define DEFAULT_SERVER_NAMES ConfigurationParser::getDefaultServerName()
 #define DEFAULT_LOCATION \
   std::map<std::string, ServerConfiguration::LocationConfiguration>()
-#define DEFAULT_ERROR_PAGE std::map<int, std::string>()
+#define DEFAULT_ERROR_PAGE ""
 #define DEFAULT_CLIENT_MAX_BODY_SIZE 1000000
 #define DEFAULT_SERVER_ROOT "/www/static"
 #define EFAULT_LOCATION_ROOT ""
@@ -158,7 +158,7 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
   std::set<std::string> server_names;
   std::map<std::string, ServerConfiguration::LocationConfiguration> location =
       DEFAULT_LOCATION;
-  std::map<int, std::string> error_page = DEFAULT_ERROR_PAGE;
+  std::string error_page = DEFAULT_ERROR_PAGE;
   int client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
   std::string root = DEFAULT_SERVER_ROOT;
   bool auto_index = DEFAULT_AUTO_INDEX;
@@ -272,7 +272,7 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
 int ConfigurationParser::ParseLocation(
     const Tokens& tokens, const ServerConfiguration& serverConfiguration,
     ServerConfiguration::LocationConfiguration& locationConfiguartion) {
-  std::map<int, std::string> error_page = serverConfiguration.error_page();
+  std::string error_page = serverConfiguration.error_page();
   int client_max_body_size = serverConfiguration.client_max_body_size();
   std::string root = EFAULT_LOCATION_ROOT;
   bool auto_index = serverConfiguration.auto_index();
@@ -327,7 +327,7 @@ int ConfigurationParser::ParseLocation(
 int ConfigurationParser::ParseServerLine(const Token& directive,
                                          const Tokens& valueTokens, int& port,
                                          std::set<std::string>& server_names,
-                                         std::map<int, std::string>& error_page,
+                                         std::string& error_page,
                                          int& client_max_body_size,
                                          std::string& root, bool& auto_index,
                                          std::string& index) {
@@ -355,11 +355,10 @@ int ConfigurationParser::ParseServerLine(const Token& directive,
 }
 
 int ConfigurationParser::ParseLocationLine(
-    const Token& directive, const Tokens& valueTokens,
-    std::map<int, std::string>& error_page, int& client_max_body_size,
-    std::string& root, bool& auto_index, std::string& index,
-    std::set<std::string>& allowed_method, std::string& return_uri,
-    std::string& upload_store) {
+    const Token& directive, const Tokens& valueTokens, std::string& error_page,
+    int& client_max_body_size, std::string& root, bool& auto_index,
+    std::string& index, std::set<std::string>& allowed_method,
+    std::string& return_uri, std::string& upload_store) {
   int rtn_parse = OK;
 
   if (directive == "error_page") {
@@ -405,20 +404,11 @@ int ConfigurationParser::ParseServer_names(std::set<std::string>& server_names,
   return OK;
 }
 
-int ConfigurationParser::ParseError_page(std::map<int, std::string>& error_page,
+int ConfigurationParser::ParseError_page(std::string& error_page,
                                          const Tokens& valueTokens) {
-  if (valueTokens.size() < 2) return ERROR;
+  if (valueTokens.size() != 1) return ERROR;
 
-  for (size_t idx_error_code = 0; idx_error_code < valueTokens.size() - 1;
-       idx_error_code++) {
-    if (!IsErrorCode(valueTokens[idx_error_code])) return ERROR;
-
-    int error_code;
-    std::stringstream(valueTokens[idx_error_code]) >> error_code;
-
-    error_page.insert(
-        std::make_pair(error_code, valueTokens[valueTokens.size() - 1]));
-  }
+  error_page = valueTokens[0];
 
   return OK;
 }
@@ -554,20 +544,6 @@ bool ConfigurationParser::IsPort(const std::string& port) {
   }
 
   if (port.length() > 5 || num > 65535) return false;
-
-  return true;
-}
-
-bool ConfigurationParser::IsErrorCode(const std::string& error_code) {
-  int num = 0;
-
-  for (size_t idx = 0; idx < error_code.size(); idx++) {
-    if (!std::isdigit(error_code[idx])) return false;
-
-    num = num * 10 + (error_code[idx] - '0');
-  }
-
-  if (error_code.length() > 3 || num >= 600) return false;
 
   return true;
 }

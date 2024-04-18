@@ -62,6 +62,7 @@ Transaction& Transaction::operator=(const Transaction& obj) {
 */
 const std::string& Transaction::method() const { return this->method_; }
 const Uri& Transaction::uri() const { return this->uri_; }
+Uri& Transaction::uri() { return this->uri_; }
 const Entity& Transaction::entity() const { return this->entity_; }
 Entity& Transaction::entity() { return this->entity_; }
 const Cgi& Transaction::cgi() const { return this->cgi_; }
@@ -260,56 +261,6 @@ void Transaction::SetEntityHeaders() {
   headers_out_.last_modified = entity_.modified_s();
 }
 
-int Transaction::HttpProcess() {
-  uri_.ReconstructTargetUri(headers_in_.host);
-  if (uri_.request_target() == config_.return_uri()) {
-    headers_out_.location = config_.return_uri();
-    RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
-  }
-
-  target_resource_ = "." + config_.root() + uri_.request_target();
-
-  if (config_.allowed_method().find(method_) ==
-      config_.allowed_method().end()) {
-    typedef std::set<std::string>::const_iterator METHOD_ITER;
-    size_t method_cnt = config_.allowed_method().size();
-    METHOD_ITER method = config_.allowed_method().begin();
-    headers_out_.allow = "";
-    for (size_t i = 0; i < method_cnt; ++i) {
-      headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
-    }
-    RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
-  }
-
-  if (method_ == HTTP_GET_METHOD) {
-    RETURN_STATUS_CODE HttpGet();
-  }
-
-  if (method_ == HTTP_POST_METHOD) {
-    RETURN_STATUS_CODE HttpPost();
-  }
-
-  if (method_ == HTTP_DELETE_METHOD) {
-    RETURN_STATUS_CODE HttpGet();
-  }
-
-  RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
-}
-
-pid_t Transaction::ExecuteCgi() {
-  SetCgiEnv();
-  int pid = 0;
-  status_code_ = cgi_.ExecuteCgi(target_resource_.c_str(),
-                                 entity_.extension().c_str(), body_in_.c_str());
-  if (status_code_ != HTTP_OK) {
-    pid = -1;
-  } else {
-    pid = cgi_.pid();
-  }
-  FreeCgiEnv();
-  return pid;
-}
-
 int Transaction::HttpGet() {
   if (!Entity::IsFileExist(target_resource_.c_str())) {
     RETURN_STATUS_CODE HTTP_NOT_FOUND;
@@ -376,6 +327,41 @@ char* SetEnv(const char* key, const char* value) {
   return (char* const)env;
 }
 
+int Transaction::HttpProcess() {
+  if (uri_.request_target() == config_.return_uri()) {
+    headers_out_.location = config_.return_uri();
+    RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
+  }
+
+  target_resource_ = "." + config_.root() + uri_.request_target();
+
+  if (config_.allowed_method().find(method_) ==
+      config_.allowed_method().end()) {
+    typedef std::set<std::string>::const_iterator METHOD_ITER;
+    size_t method_cnt = config_.allowed_method().size();
+    METHOD_ITER method = config_.allowed_method().begin();
+    headers_out_.allow = "";
+    for (size_t i = 0; i < method_cnt; ++i) {
+      headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
+    }
+    RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
+  }
+
+  if (method_ == HTTP_GET_METHOD) {
+    RETURN_STATUS_CODE HttpGet();
+  }
+
+  if (method_ == HTTP_POST_METHOD) {
+    RETURN_STATUS_CODE HttpPost();
+  }
+
+  if (method_ == HTTP_DELETE_METHOD) {
+    RETURN_STATUS_CODE HttpGet();
+  }
+
+  RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
+}
+
 void Transaction::SetCgiEnv() {
   if (method_ == HTTP_GET_METHOD) {
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "GET"));
@@ -393,6 +379,20 @@ void Transaction::FreeCgiEnv() {
   for (ConstIterator it = cgi_.envp().begin(); it != cgi_.envp().end(); ++it) {
     delete *it;
   }
+}
+
+pid_t Transaction::ExecuteCgi() {
+  SetCgiEnv();
+  int pid = 0;
+  status_code_ = cgi_.ExecuteCgi(target_resource_.c_str(),
+                                 entity_.extension().c_str(), body_in_.c_str());
+  if (status_code_ != HTTP_OK) {
+    pid = -1;
+  } else {
+    pid = cgi_.pid();
+  }
+  FreeCgiEnv();
+  return pid;
 }
 
 std::string Transaction::AppendStatusLine() {
