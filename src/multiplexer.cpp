@@ -143,18 +143,21 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
       std::clog << client.request_str() << std::endl;
       std::clog << " [ Request Message end ]  " << std::endl;
 
-      if (client.transaction_instance().ParseRequestHeader(
-              client.request_str().c_str(), client.request_str().length(),
-              offset) != HTTP_OK) {
+      int http_status = client.transaction_instance().ParseRequestHeader(
+          client.request_str().c_str(), client.request_str().length(), offset);
+
+      const ServerConfiguration& sc =
+          client.server().ConfByHost(client.transaction().headers_in().host);
+      client.transaction_instance().uri().ReconstructTargetUri(
+          client.transaction().headers_in().host);
+      client.transaction_instance().GetConfiguration(sc);
+
+      if (http_status != HTTP_OK) {
         std::cerr << REQUEST_HEADER_PARSE_ERROR_MASSAGE << std::endl;
 
         std::clog << "[ Parse Error Request ]" << std::endl
                   << client.request_str() << std::endl;
       } else {
-        const ServerConfiguration& sc =
-            client.server().ConfByHost(client.transaction().headers_in().host);
-        client.transaction_instance().GetConfiguration(sc);
-
         if (client.transaction().method() == "GET" ||
             IsReadFullBody(client.fd(), header_end)) {
           client.transaction_instance().HttpProcess();
