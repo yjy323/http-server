@@ -34,7 +34,7 @@ class Multiplexer {
   int AcceptWithClient(int server_fd);
   int CloseWithClient(int client_fd);
 
-  bool IsReadFullBody(const Client& client, const std::string& request_body);
+  bool IsReadFullBody(Client& client, const std::string& request_body);
   bool IsExistPort(int port);
   bool IsRequestBodyAllowed(const std::string& method);
   void AddConfInServers(const ServerConfiguration& server_conf);

@@ -301,7 +301,7 @@ int Multiplexer::CloseWithClient(int client_fd) {
   return OK;
 }
 
-bool Multiplexer::IsReadFullBody(const Client& client,
+bool Multiplexer::IsReadFullBody(Client& client,
                                  const std::string& request_body) {
   const HeadersIn& headers_in = client.transaction().headers_in();
   const ServerConfiguration::LocationConfiguration& config =
@@ -314,7 +314,8 @@ bool Multiplexer::IsReadFullBody(const Client& client,
   if (headers_in.content_length_n >= 0) {
     if (request_body.length() >
         static_cast<size_t>(config.client_max_body_size())) {
-      // todo: http_satus = HTTP_REQUEST_ENTITY_TOO_LARGE
+      client.transaction_instance().set_status_code(
+          HTTP_REQUEST_ENTITY_TOO_LARGE);
     } else if (request_body.length() <
                static_cast<size_t>(headers_in.content_length_n)) {
       return false;
@@ -325,7 +326,7 @@ bool Multiplexer::IsReadFullBody(const Client& client,
     }
   } else {
     if (request_body.length() > 0) {
-      // todo: http_satus = HTTP_LENGTH_REQUIRED
+      client.transaction_instance().set_status_code(HTTP_LENGTH_REQUIRED);
     }
   }
 
