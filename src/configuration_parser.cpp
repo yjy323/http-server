@@ -3,13 +3,14 @@
 #include <sstream>
 
 #include "file_reader.hpp"
+#include "utils.hpp"
 
 #define DEFAULT_PORT 8080
 #define DEFAULT_SERVER_NAMES ConfigurationParser::getDefaultServerName()
 #define DEFAULT_LOCATION \
   std::map<std::string, ServerConfiguration::LocationConfiguration>()
 #define DEFAULT_ERROR_PAGE ""
-#define DEFAULT_CLIENT_MAX_BODY_SIZE "1M"
+#define DEFAULT_CLIENT_MAX_BODY_SIZE 1000000
 #define DEFAULT_SERVER_ROOT "/www/static"
 #define EFAULT_LOCATION_ROOT ""
 #define DEFAULT_AUTO_INDEX false
@@ -158,7 +159,7 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
   std::map<std::string, ServerConfiguration::LocationConfiguration> location =
       DEFAULT_LOCATION;
   std::string error_page = DEFAULT_ERROR_PAGE;
-  std::string client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
+  int client_max_body_size = DEFAULT_CLIENT_MAX_BODY_SIZE;
   std::string root = DEFAULT_SERVER_ROOT;
   bool auto_index = DEFAULT_AUTO_INDEX;
   std::string index = DEFAULT_INDEX;
@@ -272,7 +273,7 @@ int ConfigurationParser::ParseLocation(
     const Tokens& tokens, const ServerConfiguration& serverConfiguration,
     ServerConfiguration::LocationConfiguration& locationConfiguartion) {
   std::string error_page = serverConfiguration.error_page();
-  std::string client_max_body_size = serverConfiguration.client_max_body_size();
+  int client_max_body_size = serverConfiguration.client_max_body_size();
   std::string root = EFAULT_LOCATION_ROOT;
   bool auto_index = serverConfiguration.auto_index();
   std::string index = serverConfiguration.index();
@@ -327,7 +328,7 @@ int ConfigurationParser::ParseServerLine(const Token& directive,
                                          const Tokens& valueTokens, int& port,
                                          std::set<std::string>& server_names,
                                          std::string& error_page,
-                                         std::string& client_max_body_size,
+                                         int& client_max_body_size,
                                          std::string& root, bool& auto_index,
                                          std::string& index) {
   int rtn_parse = OK;
@@ -355,7 +356,7 @@ int ConfigurationParser::ParseServerLine(const Token& directive,
 
 int ConfigurationParser::ParseLocationLine(
     const Token& directive, const Tokens& valueTokens, std::string& error_page,
-    std::string& client_max_body_size, std::string& root, bool& auto_index,
+    int& client_max_body_size, std::string& root, bool& auto_index,
     std::string& index, std::set<std::string>& allowed_method,
     std::string& return_uri, std::string& upload_store) {
   int rtn_parse = OK;
@@ -412,11 +413,13 @@ int ConfigurationParser::ParseError_page(std::string& error_page,
   return OK;
 }
 
-int ConfigurationParser::ParseClient_max_body_size(
-    std::string& client_max_body_size, const Tokens& valueTokens) {
+int ConfigurationParser::ParseClient_max_body_size(int& client_max_body_size,
+                                                   const Tokens& valueTokens) {
   if (valueTokens.size() != 1) return ERROR;
 
-  client_max_body_size = valueTokens[0];
+  if (!isPositiveInteger(valueTokens[0])) return ERROR;
+
+  client_max_body_size = atoi(valueTokens[0].c_str());
 
   return OK;
 }

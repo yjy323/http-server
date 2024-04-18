@@ -18,7 +18,7 @@ class ServerConfiguration {
     /* contructor */
     LocationConfiguration();
     LocationConfiguration(const std::string& error_page,
-                          const std::string& client_max_body_size,
+                          const int& client_max_body_size,
                           const std::string& root, const bool& auto_index,
                           const std::string& index,
                           const std::set<std::string>& allowed_method,
@@ -34,7 +34,7 @@ class ServerConfiguration {
 
     /* getter */
     const std::string& error_page() const;
-    const std::string& client_max_body_size() const;
+    const int& client_max_body_size() const;
     const std::string& root() const;
     const bool& auto_index() const;
     const std::string& index() const;
@@ -45,7 +45,7 @@ class ServerConfiguration {
    private:
     /* variable */
     std::string error_page_;
-    std::string client_max_body_size_;
+    int client_max_body_size_;
     std::string root_;
     bool auto_index_;
     std::string index_;
@@ -59,7 +59,7 @@ class ServerConfiguration {
   ServerConfiguration(
       const int& port, const std::set<std::string>& server_names,
       const std::map<std::string, LocationConfiguration>& location,
-      const std::string& error_page, const std::string& client_max_body_size,
+      const std::string& error_page, const int& client_max_body_size,
       const std::string& root, const bool& auto_index,
       const std::string& index);
   ServerConfiguration(const ServerConfiguration& ref);
@@ -75,7 +75,7 @@ class ServerConfiguration {
   const std::set<std::string>& server_names() const;
   const std::map<std::string, LocationConfiguration>& location() const;
   const std::string& error_page() const;
-  const std::string& client_max_body_size() const;
+  const int& client_max_body_size() const;
   const std::string& root() const;
   const bool& auto_index() const;
   const std::string& index() const;
@@ -86,7 +86,7 @@ class ServerConfiguration {
   std::set<std::string> server_names_;
   std::map<std::string, LocationConfiguration> location_;
   std::string error_page_;
-  std::string client_max_body_size_;
+  int client_max_body_size_;
   std::string root_;
   bool auto_index_;
   std::string index_;

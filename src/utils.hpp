@@ -20,5 +20,6 @@ const std::vector<const std::string> Split(const std::string& str,
                                            const std::string& sep);
 
 void* Memset(void* b, const int c, const size_t len);
+bool isPositiveInteger(const std::string& str);
 
 #endif
