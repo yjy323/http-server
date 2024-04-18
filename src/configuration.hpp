@@ -17,7 +17,7 @@ class ServerConfiguration {
    public:
     /* contructor */
     LocationConfiguration();
-    LocationConfiguration(const std::map<int, std::string>& error_page,
+    LocationConfiguration(const std::string& error_page,
                           const std::string& client_max_body_size,
                           const std::string& root, const bool& auto_index,
                           const std::string& index,
@@ -33,7 +33,7 @@ class ServerConfiguration {
     LocationConfiguration& operator=(const LocationConfiguration& ref);
 
     /* getter */
-    const std::map<int, std::string>& error_page() const;
+    const std::string& error_page() const;
     const std::string& client_max_body_size() const;
     const std::string& root() const;
     const bool& auto_index() const;
@@ -44,7 +44,7 @@ class ServerConfiguration {
 
    private:
     /* variable */
-    std::map<int, std::string> error_page_;
+    std::string error_page_;
     std::string client_max_body_size_;
     std::string root_;
     bool auto_index_;
@@ -59,9 +59,9 @@ class ServerConfiguration {
   ServerConfiguration(
       const int& port, const std::set<std::string>& server_names,
       const std::map<std::string, LocationConfiguration>& location,
-      const std::map<int, std::string>& error_page,
-      const std::string& client_max_body_size, const std::string& root,
-      const bool& auto_index, const std::string& index);
+      const std::string& error_page, const std::string& client_max_body_size,
+      const std::string& root, const bool& auto_index,
+      const std::string& index);
   ServerConfiguration(const ServerConfiguration& ref);
 
   /* destructor */
@@ -74,7 +74,7 @@ class ServerConfiguration {
   const int& port() const;
   const std::set<std::string>& server_names() const;
   const std::map<std::string, LocationConfiguration>& location() const;
-  const std::map<int, std::string>& error_page() const;
+  const std::string& error_page() const;
   const std::string& client_max_body_size() const;
   const std::string& root() const;
   const bool& auto_index() const;
@@ -85,7 +85,7 @@ class ServerConfiguration {
   int port_;
   std::set<std::string> server_names_;
   std::map<std::string, LocationConfiguration> location_;
-  std::map<int, std::string> error_page_;
+  std::string error_page_;
   std::string client_max_body_size_;
   std::string root_;
   bool auto_index_;

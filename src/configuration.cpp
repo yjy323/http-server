@@ -15,9 +15,8 @@ ServerConfiguration::LocationConfiguration::LocationConfiguration()
       upload_store_() {}
 
 ServerConfiguration::LocationConfiguration::LocationConfiguration(
-    const std::map<int, std::string>& error_page,
-    const std::string& client_max_body_size, const std::string& root,
-    const bool& auto_index, const std::string& index,
+    const std::string& error_page, const std::string& client_max_body_size,
+    const std::string& root, const bool& auto_index, const std::string& index,
     const std::set<std::string>& allowed_method, const std::string& return_uri,
     const std::string& upload_store)
     : error_page_(error_page),
@@ -43,10 +42,7 @@ ServerConfiguration::LocationConfiguration::operator=(
     const LocationConfiguration& ref) {
   if (this == &ref) return *this;
 
-  for (std::map<int, std::string>::const_iterator it = ref.error_page().begin();
-       it != ref.error_page().end(); it++) {
-    this->error_page_.insert(std::make_pair(it->first, it->second));
-  }
+  this->error_page_ = ref.error_page();
   this->client_max_body_size_ = ref.client_max_body_size();
   this->root_ = ref.root();
   this->auto_index_ = ref.auto_index();
@@ -63,8 +59,8 @@ ServerConfiguration::LocationConfiguration::operator=(
 
 /** ServerConfiguration::LocationConfiguration::getter **/
 
-const std::map<int, std::string>&
-ServerConfiguration::LocationConfiguration::error_page() const {
+const std::string& ServerConfiguration::LocationConfiguration::error_page()
+    const {
   return this->error_page_;
 }
 
@@ -117,9 +113,8 @@ ServerConfiguration::ServerConfiguration()
 ServerConfiguration::ServerConfiguration(
     const int& port, const std::set<std::string>& server_names,
     const std::map<std::string, LocationConfiguration>& location,
-    const std::map<int, std::string>& error_page,
-    const std::string& client_max_body_size, const std::string& root,
-    const bool& auto_index, const std::string& index)
+    const std::string& error_page, const std::string& client_max_body_size,
+    const std::string& root, const bool& auto_index, const std::string& index)
     : port_(port),
       server_names_(server_names),
       location_(location),
@@ -153,10 +148,7 @@ ServerConfiguration& ServerConfiguration::operator=(
        it != ref.location().end(); it++) {
     this->location_.insert(std::make_pair(it->first, it->second));
   }
-  for (std::map<int, std::string>::const_iterator it = ref.error_page().begin();
-       it != ref.error_page().end(); it++) {
-    this->error_page_.insert(std::make_pair(it->first, it->second));
-  }
+  this->error_page_ = ref.error_page();
   this->client_max_body_size_ = ref.client_max_body_size();
   this->root_ = ref.root();
   this->auto_index_ = ref.auto_index();
@@ -178,7 +170,7 @@ ServerConfiguration::location() const {
   return this->location_;
 }
 
-const std::map<int, std::string>& ServerConfiguration::error_page() const {
+const std::string& ServerConfiguration::error_page() const {
   return this->error_page_;
 }
 
@@ -210,13 +202,7 @@ std::ostream& operator<<(std::ostream& out,
     out << "		" << *it << std::endl;
   }
 
-  out << "	error_page: " << std::endl;
-  const std::map<int, std::string> error_page =
-      serverConfiguration.error_page();
-  for (std::map<int, std::string>::const_iterator it = error_page.begin();
-       it != error_page.end(); it++) {
-    out << "		" << it->first << " : " << it->second << std::endl;
-  }
+  out << "	error_page: " << serverConfiguration.error_page() << std::endl;
 
   out << "	client_max_body_size: "
       << serverConfiguration.client_max_body_size() << std::endl;
@@ -247,15 +233,8 @@ std::ostream& operator<<(std::ostream& out,
 std::ostream& operator<<(
     std::ostream& out,
     const ServerConfiguration::LocationConfiguration& locationConfiguration) {
-  out << "			error_page: " << std::endl;
-
-  const std::map<int, std::string> error_page =
-      locationConfiguration.error_page();
-  for (std::map<int, std::string>::const_iterator it = error_page.begin();
-       it != error_page.end(); it++) {
-    out << "				" << it->first << " : " << it->second
-        << std::endl;
-  }
+  out << "			error_page: "
+      << locationConfiguration.error_page() << std::endl;
 
   out << "			client_max_body_size: "
       << locationConfiguration.client_max_body_size() << std::endl;
