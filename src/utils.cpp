@@ -129,3 +129,13 @@ void* Memset(void* b, int c, const size_t len) {
 
   return ((void*)b);
 }
+
+bool isPositiveInteger(const std::string& str) {
+  if (str.empty()) return false;
+
+  for (std::size_t i = 0; i < str.length(); ++i) {
+    if (str[i] < '0' || str[i] > '9') return false;
+  }
+
+  return atoi(str.c_str()) > 0;
+}

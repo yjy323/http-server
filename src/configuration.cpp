@@ -16,7 +16,7 @@ ServerConfiguration::LocationConfiguration::LocationConfiguration()
 
 ServerConfiguration::LocationConfiguration::LocationConfiguration(
     const std::map<int, std::string>& error_page,
-    const std::string& client_max_body_size, const std::string& root,
+    const int& client_max_body_size, const std::string& root,
     const bool& auto_index, const std::string& index,
     const std::set<std::string>& allowed_method, const std::string& return_uri,
     const std::string& upload_store)
@@ -68,8 +68,8 @@ ServerConfiguration::LocationConfiguration::error_page() const {
   return this->error_page_;
 }
 
-const std::string&
-ServerConfiguration::LocationConfiguration::client_max_body_size() const {
+const int& ServerConfiguration::LocationConfiguration::client_max_body_size()
+    const {
   return this->client_max_body_size_;
 }
 
@@ -118,7 +118,7 @@ ServerConfiguration::ServerConfiguration(
     const int& port, const std::set<std::string>& server_names,
     const std::map<std::string, LocationConfiguration>& location,
     const std::map<int, std::string>& error_page,
-    const std::string& client_max_body_size, const std::string& root,
+    const int& client_max_body_size, const std::string& root,
     const bool& auto_index, const std::string& index)
     : port_(port),
       server_names_(server_names),
@@ -182,7 +182,7 @@ const std::map<int, std::string>& ServerConfiguration::error_page() const {
   return this->error_page_;
 }
 
-const std::string& ServerConfiguration::client_max_body_size() const {
+const int& ServerConfiguration::client_max_body_size() const {
   return this->client_max_body_size_;
 }
 
