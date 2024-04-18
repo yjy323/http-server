@@ -217,7 +217,7 @@ void Multiplexer::HandleCgiEvent(struct kevent event) {
     cgi_res += buffer;
   }
   if (bytes_read == -1) {
-    // todo: set 상태코드 error
+    client.transaction_instance().set_status_code(HTTP_BAD_GATEWAY);
   } else {
     client.transaction_instance().entity().ReadBuffer(cgi_res.c_str(),
                                                       cgi_res.length());

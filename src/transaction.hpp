@@ -41,7 +41,12 @@ class Transaction {
   const HeadersIn& headers_in() const;
   const HeadersOut& headers_out() const;
   const std::string& body() const;
-  int status_code();
+  const int& status_code() const;
+
+  /*
+        Setters
+  */
+  void set_status_code(const int& status_code);
 
  private:
   int ParseRequestLine(std::string& request_line);
