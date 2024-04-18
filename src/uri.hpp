@@ -24,6 +24,7 @@ class Uri {
 
   RequestTargetFrom request_target_form() const;
   const std::string& request_target() const;
+  const std::string& decoded_request_target() const;
   const std::string& scheme() const;
   const std::string& user() const;
   const std::string& password() const;
@@ -36,9 +37,11 @@ class Uri {
   int ParseAuthority(std::string& authority);
   int ParsePathSegment(std::string& path_component);
   int ParseQuery(std::string& query);
+  std::string DecodeRequestTarget();
 
   RequestTargetFrom request_target_form_;
   std::string request_target_;
+  std::string decoded_request_target_;
 
   std::string scheme_;
   std::string user_;

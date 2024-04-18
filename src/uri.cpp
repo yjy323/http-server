@@ -35,6 +35,7 @@ int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
 Uri::Uri()
     : request_target_form_(kAbsoluteForm),
       request_target_(""),
+      decoded_request_target_(""),
       scheme_("http"),
       user_(""),
       password_(""),
@@ -48,6 +49,7 @@ Uri& Uri::operator=(const Uri& obj) {
   if (this != &obj) {
     this->request_target_form_ = obj.request_target_form_;
     this->request_target_ = obj.request_target_;
+    this->decoded_request_target_ = obj.decoded_request_target_;
     this->scheme_ = obj.scheme_;
     this->user_ = obj.user_;
     this->password_ = obj.password_;
@@ -62,6 +64,9 @@ Uri::RequestTargetFrom Uri::request_target_form() const {
   return this->request_target_form_;
 }
 const std::string& Uri::request_target() const { return this->request_target_; }
+const std::string& Uri::decoded_request_target() const {
+  return this->decoded_request_target_;
+}
 const std::string& Uri::scheme() const { return this->scheme_; }
 const std::string& Uri::user() const { return this->user_; }
 const std::string& Uri::password() const { return this->password_; }
@@ -217,11 +222,32 @@ int Uri::ParseUriComponent(std::string request_uri) {
   return HTTP_OK;
 }
 
+std::string Uri::DecodeRequestTarget() {
+  std::stringstream decode;
+  size_t i = 0;
+  size_t length = request_target_.length();
+  while (i < length) {
+    char c = request_target_[i];
+    if (c == '%') {
+      std::string hex = request_target_.substr(i + 1, i + 3);
+      char octet = static_cast<char>(std::strtol(hex.c_str(), NULL, 16));
+      decode << octet;
+      i += 3;
+    } else {
+      decode << c;
+      i += 1;
+    }
+  }
+  decoded_request_target_ = decode.str();
+  return decoded_request_target_;
+}
+
 int Uri::ReconstructTargetUri(std::string request_host) {
   if (this->request_target_form_ == kOriginForm) {
     this->scheme_ = "http";
     this->host_ = request_host;
   }
   this->request_target_ = this->path_;
+  DecodeRequestTarget();
   return HTTP_OK;
 }
