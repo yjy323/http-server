@@ -82,7 +82,7 @@ bool IsObsText(unsigned char c) {
   }
 }
 
-bool IsToken(const std::string s) {
+bool IsToken(const std::string s, bool is_list) {
   // token = 1*tchar
   for (size_t i = 0; i < s.length(); ++i) {
     char c = s[i];
@@ -110,6 +110,8 @@ bool IsToken(const std::string s) {
         break;
       default:
         if (std::isalnum(c)) {
+          break;
+        } else if (is_list && (c == ',' || c == ' ')) {
           break;
         } else {
           return false;

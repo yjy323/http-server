@@ -10,6 +10,7 @@
 std::string MakeRfc850Time(const std::time_t& time);
 std::string ToCaseInsensitive(std::string str);
 
+std::string RemoveWhiteSpace(std::string str);
 std::string Trim(std::string s);
 
 std::vector<std::string> Split(std::string& str, const char delimiter);
