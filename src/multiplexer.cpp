@@ -139,8 +139,6 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
 
     if (size_t header_end = client.request_str().find(REQUEST_HEADER_END) !=
                             std::string::npos) {
-      ssize_t offset = 0;
-
       std::clog << " [ Request Message start ]  " << std::endl;
       std::clog << client.request_str() << std::endl;
       std::clog << " [ Request Message end ]  " << std::endl;

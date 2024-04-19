@@ -215,7 +215,6 @@ int Transaction::ParseRequestHeader(std::string buff) {
 
 int Transaction::ParseRequestBody(std::string buff, size_t content_length) {
   std::stringstream ss;
-  static const size_t SIZE = buff.size();
   size_t offset = 0;
 
   if (headers_in_.chuncked) {
@@ -265,7 +264,7 @@ int Transaction::DecodeChunkedEncoding(std::string buff) {
     std::string contents =
         buff.substr(hex_end + std::strlen(CRLF),
                     contents_end - hex_end - std::strlen(CRLF));
-    if (contents.length() != strtol(hex_str.c_str(), NULL, 16)) {
+    if (contents.length() != (size_t)strtol(hex_str.c_str(), NULL, 16)) {
       RETURN_STATUS_CODE HTTP_BAD_REQUEST;
     }
 
@@ -488,15 +487,17 @@ std::string Transaction::AppendResponseHeader(const std::string key,
 void Transaction::SetErrorPage() {
   static const std::string ERROR_PAGE_PATH =
       "." + config_.root() + "/" + config_.error_page();
-  if (config_.error_page() != "") {
+
+  if (config_.error_page() != "" &&
+      entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
+    entity_ = Entity(ERROR_PAGE_PATH);
     entity_.ReadFile(ERROR_PAGE_PATH.c_str());
   } else {
-    if (entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
+    if (config_.error_page() != "") {
       status_code_ = HTTP_FORBIDDEN;
     }
-    static const std::string STATUS =
-        std::to_string(status_code_) + " " + HttpGetReasonPhase(status_code_);
-    entity_.CreatePage(STATUS);
+    entity_.CreatePage(std::to_string(status_code_) + " " +
+                       HttpGetReasonPhase(status_code_));
   }
   SetEntityHeaders();
 }
