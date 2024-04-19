@@ -167,30 +167,30 @@ int Transaction::ParseFieldValue(std::string& field_line) {
         {}
 */
 
-int Transaction::ParseRequestHeader(const char* buff, ssize_t size,
-                                    ssize_t& offset) {
+int Transaction::ParseRequestHeader(std::string buff) {
   /*
           HTTP-message = start-line CRLF
                         *( field-line CRLF )
                         CRLF
                         [ message-body ]
   */
-  std::string buff_str(buff);
+  static const ssize_t SIZE = buff.size();
+  ssize_t offset = 0;
   std::string line;
   size_t crlf_pos;
 
   bool start_line_flag = true;
 
-  while (offset < size) {
-    crlf_pos = buff_str.find(CRLF);
-    if (crlf_pos == buff_str.npos) {
+  while (offset < SIZE) {
+    crlf_pos = buff.find(CRLF);
+    if (crlf_pos == buff.npos) {
       // CRLF가 존재하지 않는 요청 해더
       // return status_code_ = HTTP_BAD_REQUEST;
       RETURN_STATUS_CODE HTTP_BAD_REQUEST;
     }
 
-    line = buff_str.substr(0, crlf_pos);
-    buff_str = buff_str.substr(crlf_pos + 2);
+    line = buff.substr(0, crlf_pos);
+    buff = buff.substr(crlf_pos + 2);
     offset = line.size() + 2;
 
     if (start_line_flag && line.empty()) {
@@ -212,20 +212,70 @@ int Transaction::ParseRequestHeader(const char* buff, ssize_t size,
   }
   RETURN_STATUS_CODE HTTP_BAD_REQUEST;
 }
-int Transaction::ParseRequestBody(char* buff, ssize_t size, ssize_t& offset) {
+
+int Transaction::ParseRequestBody(std::string buff, size_t content_length) {
+  std::stringstream ss;
+  static const size_t SIZE = buff.size();
+  size_t offset = 0;
+
   if (headers_in_.chuncked) {
-    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+    RETURN_STATUS_CODE DecodeChunkedEncoding(buff);
   } else {
-    // DecodeChunkedEncoding(buff, size, offset);
-    for (; offset < size; ++offset) {
+    for (; offset < content_length; ++offset) {
       char c = buff[offset];
       if (!IsOctet(c)) {
         RETURN_STATUS_CODE HTTP_BAD_REQUEST;
       }
-      this->body_in_ = std::string(buff);
+      ss << c;
     }
+    this->body_in_ = ss.str();
     RETURN_STATUS_CODE HTTP_OK;
   }
+}
+
+int Transaction::DecodeChunkedEncoding(std::string buff) {
+  static const size_t SIZE = buff.size();
+  size_t offset = 0;
+
+  while (offset < SIZE) {
+    if (buff.substr(offset, std::strlen("0" CRLF)) == "0" CRLF) {
+      break;
+    }
+
+    std::size_t hex_end = buff.find(CRLF, offset);
+    if (hex_end == std::string::npos) {
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+    }
+
+    std::string hex_str = buff.substr(offset, hex_end - offset);
+    if (hex_str.empty()) {
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+    }
+    for (size_t i = 0; i < hex_str.length(); ++i) {
+      if (!std::isxdigit(hex_str[i])) {
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      }
+    }
+
+    size_t contents_end = buff.find(CRLF, hex_end + std::strlen(CRLF));
+    if (contents_end == std::string::npos) {
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+    }
+
+    std::string contents =
+        buff.substr(hex_end + std::strlen(CRLF),
+                    contents_end - hex_end - std::strlen(CRLF));
+    if (contents.length() != strtol(hex_str.c_str(), NULL, 16)) {
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+    }
+
+    body_in_.append(contents);
+
+    offset = contents_end + std::strlen(CRLF);
+  }
+  headers_in_.content_length_n = body_in_.length();
+  headers_in_.content_length = std::to_string(headers_in_.content_length_n);
+  RETURN_STATUS_CODE HTTP_OK;
 }
 
 const Transaction::Configuration& Transaction::GetConfiguration(
@@ -438,10 +488,12 @@ std::string Transaction::AppendResponseHeader(const std::string key,
 void Transaction::SetErrorPage() {
   static const std::string ERROR_PAGE_PATH =
       "." + config_.root() + "/" + config_.error_page();
-  if (config_.error_page() != "" &&
-      entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
+  if (config_.error_page() != "") {
     entity_.ReadFile(ERROR_PAGE_PATH.c_str());
   } else {
+    if (entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
+      status_code_ = HTTP_FORBIDDEN;
+    }
     static const std::string STATUS =
         std::to_string(status_code_) + " " + HttpGetReasonPhase(status_code_);
     entity_.CreatePage(STATUS);

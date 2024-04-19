@@ -146,7 +146,7 @@ void Multiplexer::HandleReadEvent(struct kevent event) {
       std::clog << " [ Request Message end ]  " << std::endl;
 
       int http_status = client.transaction_instance().ParseRequestHeader(
-          client.request_str().c_str(), client.request_str().length(), offset);
+          client.request_str());
 
       const ServerConfiguration& sc =
           client.server().ConfByHost(client.transaction().headers_in().host);
