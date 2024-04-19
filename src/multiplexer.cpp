@@ -12,7 +12,8 @@
 #define EVENT_SIZE 30
 #define BUFFER_SIZE 2048
 #define EVENT_POLL_TIME 3
-#define EVENT_TIMEOUT_SEC 2
+#define READ_EVENT_TIMEOUT_SEC 3
+#define KEEP_ALIVE_TIMEOUT_SEC 5
 #define SERVER_UDATA (1 << 0)
 #define CLIENT_UDATA (1 << 1)
 #define CGI_UDATA (1 << 1)
@@ -107,7 +108,6 @@ void Multiplexer::HandleEvents(int nev) {
       std::clog << "[event type] WRITE" << std::endl;
       HandleWriteEvent(events[i]);
       this->clients_[events[i].ident].ResetClientTransactionInfo();
-      CloseWithClient(events[i].ident);
     } else if (events[i].filter == EVFILT_PROC) {
       std::clog << "[event type] PROC" << std::endl;
       HandleCgiEvent(events[i]);
@@ -204,8 +204,17 @@ void Multiplexer::HandleWriteEvent(struct kevent event) {
   std::clog << std::endl << " [ Response End ] " << std::endl;
 
   if (send(client.fd(), client.response_str().c_str(),
-           client.response_str().length(), 0) == -1)
-    CloseWithClient(event.ident);
+           client.response_str().length(), 0) == -1) {
+    CloseWithClient(client.fd());
+    this->eh_.DeleteAll(client.fd());
+  }
+
+  if (this->eh_.Regist(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
+                       KEEP_ALIVE_TIMEOUT_SEC * 1000,
+                       static_cast<void*>(&this->client_udata_)) == ERROR) {
+    CloseWithClient(client.fd());
+    this->eh_.DeleteAll(client.fd());
+  }
 }
 
 void Multiplexer::HandleCgiEvent(struct kevent event) {
@@ -283,7 +292,7 @@ int Multiplexer::AcceptWithClient(int server_fd) {
             << std::endl;
 
   if (this->eh_.Regist(client_fd, EVFILT_TIMER, EV_ONESHOT, 0,
-                       EVENT_TIMEOUT_SEC * 1000,
+                       READ_EVENT_TIMEOUT_SEC * 1000,
                        static_cast<void*>(&this->client_udata_)) == ERROR)
     return ERROR;
 
