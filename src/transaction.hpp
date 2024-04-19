@@ -20,8 +20,8 @@ class Transaction {
   const Configuration& GetConfiguration(const ServerConfiguration&);
 
   // Request
-  int ParseRequestHeader(const char* buff, ssize_t size, ssize_t& offset);
-  int ParseRequestBody(char* buff, ssize_t size, ssize_t& offset);
+  int ParseRequestHeader(std::string buff);
+  int ParseRequestBody(std::string buff, size_t content_length);
 
   // Response
   int HttpProcess();
@@ -51,7 +51,7 @@ class Transaction {
  private:
   int ParseRequestLine(std::string& request_line);
   int ParseFieldValue(std::string& header);
-  int DecodeChunkedEncoding(char* buff, ssize_t size, ssize_t& offset);
+  int DecodeChunkedEncoding(std::string buff);
 
   int HttpGet();
   int HttpPost();
