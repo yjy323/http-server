@@ -75,7 +75,6 @@ int Multiplexer::InitServer() {
 int Multiplexer::Multiplexing() {
   for (std::vector<Server>::const_iterator it = this->servers_.begin();
        it != this->servers_.end(); it++) {
-    // if (RegistServerReadEvent(it->fd()) == ERROR) return ERROR;
     if (this->eh_.Regist(it->fd(), EVFILT_READ, 0, 0, 0,
                          static_cast<void*>(&this->server_udata_)) == ERROR)
       return ERROR;
@@ -107,6 +106,7 @@ void Multiplexer::HandleEvents(int nev) {
     } else if (events[i].filter == EVFILT_WRITE) {
       std::clog << "[event type] WRITE" << std::endl;
       HandleWriteEvent(events[i]);
+      this->clients_[events[i].ident].ResetClientTransactionInfo();
       CloseWithClient(events[i].ident);
     } else if (events[i].filter == EVFILT_PROC) {
       std::clog << "[event type] PROC" << std::endl;
@@ -203,8 +203,9 @@ void Multiplexer::HandleWriteEvent(struct kevent event) {
   std::clog << client.response_str() << std::endl;
   std::clog << std::endl << " [ Response End ] " << std::endl;
 
-  send(client.fd(), client.response_str().c_str(),
-       client.response_str().length(), 0);
+  if (send(client.fd(), client.response_str().c_str(),
+           client.response_str().length(), 0) == -1)
+    CloseWithClient(event.ident);
 }
 
 void Multiplexer::HandleCgiEvent(struct kevent event) {
