@@ -31,6 +31,17 @@ std::string ToCaseInsensitive(std::string str) {
   return insensitive_str;
 }
 
+std::string RemoveWhiteSpace(std::string str) {
+  std::string result;
+  for (size_t i = 0; i < str.length(); ++i) {
+    char c = str[i];
+    if (c != ' ') {
+      result += c;
+    }
+  }
+  return result;
+}
+
 std::string Trim(const std::string s) {
   size_t front = 0;
   size_t back = s.npos;

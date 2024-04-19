@@ -125,13 +125,28 @@ int HttpContentLength(HeadersIn& headers_in, std::string value) {
 }
 
 int HttpTransferEncoding(HeadersIn& headers_in, std::string value) {
-  if (!IsToken(value)) {
+  if (!IsToken(value, true)) {
     return HTTP_BAD_REQUEST;
   } else if (ToCaseInsensitive(Trim(value)) != "chunked") {
     return HTTP_NOT_IMPLEMENTED;
   } else {
     headers_in.transfer_encoding = value;
     headers_in.chuncked = true;
+    return HTTP_OK;
+  }
+}
+
+int HttpConnection(HeadersIn& headers_in, std::string value) {
+  if (!IsToken(value, true)) {
+    return HTTP_BAD_REQUEST;
+  } else {
+    headers_in.connection = value;
+    std::string conntection_list = RemoveWhiteSpace(headers_in.connection);
+    std::vector<std::string> connection_options = Split(conntection_list, ',');
+    if (std::find(connection_options.begin(), connection_options.end(),
+                  HTTP_CONNECTION_OPTION_CLOSE) != connection_options.end()) {
+      headers_in.connection_close = true;
+    }
     return HTTP_OK;
   }
 }

@@ -8,7 +8,7 @@ bool IsHost(std::string s);
 bool IsWhiteSpace(char c);
 bool IsVchar(char c);
 bool IsObsText(unsigned char c);
-bool IsToken(std::string s);
+bool IsToken(std::string s, bool is_list);
 bool IsUnreserved(char c);
 bool IsSubDlims(char c);
 bool IsPctEncoded(std::string s, size_t pos);

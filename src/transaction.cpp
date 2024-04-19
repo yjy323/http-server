@@ -34,6 +34,7 @@ Transaction::Transaction()
       entity_(),
       cgi_() {
   headers_out_.server = "webserv/" SERVER_VERSION;
+  headers_out_.connection = HTTP_CONNECTION_OPTION_KEEP_ALIVE;
 }
 
 Transaction::Transaction(const Transaction& obj) { *this = obj; }
@@ -89,7 +90,7 @@ int Transaction::ParseRequestLine(std::string& request_line) {
   std::string method = request_line_component[0];
   std::string request_target = request_line_component[1];
   std::string http_version = request_line_component[2];
-  if (method.length() == 0 || !IsToken(method)) {
+  if (method.length() == 0 || !IsToken(method, false)) {
     RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
   if (this->uri_.ParseUriComponent(request_target) == HTTP_BAD_REQUEST) {
@@ -122,7 +123,7 @@ int Transaction::ParseFieldValue(std::string& field_line) {
   }
 
   field_name = ToCaseInsensitive(field_line.substr(0, delimiter_pos));
-  if (field_name.length() == 0 || !IsToken(field_name)) {
+  if (field_name.length() == 0 || !IsToken(field_name, false)) {
     RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
 
@@ -507,6 +508,7 @@ std::string Transaction::CreateResponseMessage() {
         The "Date" header field represents the date and time at which the
         message was originated. Section 6.6.1 of [HTTP]
   */
+  headers_out_.connection_close = headers_in_.connection_close;
   headers_out_.date_t = std::time(NULL);
   headers_out_.date = MakeRfc850Time(headers_out_.date_t);
 
@@ -532,6 +534,7 @@ std::string Transaction::CreateResponseMessage() {
       SetErrorPage();
       AppendResponseHeader("Content-Type", headers_out_.content_type);
       AppendResponseHeader("Content-Length", headers_out_.content_length);
+      headers_out_.connection_close = true;
       break;
     default:
       break;
@@ -546,6 +549,10 @@ std::string Transaction::CreateResponseMessage() {
       break;
   }
 
+  if (headers_out_.connection_close == true) {
+    headers_out_.connection = HTTP_CONNECTION_OPTION_CLOSE;
+  }
+  AppendResponseHeader("Connection", headers_out_.connection);
   response_ += CRLF;
   response_ += body_out_;
   return response_;

@@ -63,6 +63,9 @@
 #define HTTP_VERSION_NOT_SUPPORTED 505
 #define HTTP_INSUFFICIENT_STORAGE 507
 
+#define HTTP_CONNECTION_OPTION_CLOSE "close\0"
+#define HTTP_CONNECTION_OPTION_KEEP_ALIVE "keep-alive\0"
+
 const static char* REASON_PHASE[] = {"Continue",
                                      "Switching Protocols",
                                      "Processing",
@@ -130,6 +133,7 @@ struct HeadersIn {
   std::string upgrade;
 
   ssize_t content_length_n;
+  bool connection_close;
   bool chuncked;
 };
 
@@ -148,8 +152,10 @@ struct HeadersOut {
   std::string expires;
   std::string etag;
   std::string allow;
+  std::string connection;
 
   std::time_t date_t;
+  bool connection_close;
 };
 
 const char* HttpGetReasonPhase(int status_code);
@@ -161,5 +167,6 @@ const std::string HttpInsertHeader(std::map<HeaderKey, HeaderValue>& headers,
 int HttpHost(HeadersIn&, const std::string);
 int HttpContentLength(HeadersIn&, const std::string);
 int HttpTransferEncoding(HeadersIn&, const std::string);
+int HttpConnection(HeadersIn&, const std::string);
 
 #endif
