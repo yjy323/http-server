@@ -29,6 +29,12 @@ Client& Client::operator=(const Client& ref) {
   return *this;
 }
 
+void Client::ResetClientTransactionInfo() {
+  this->transaction_ = Transaction();
+  this->request_str_ = "";
+  this->response_str_ = "";
+}
+
 const int& Client::fd() const { return this->fd_; }
 
 const Server& Client::server() const { return this->server_; }

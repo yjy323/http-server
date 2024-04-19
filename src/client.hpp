@@ -15,11 +15,12 @@ class Client {
 
   Client& operator=(const Client& ref);
 
+  void ResetClientTransactionInfo();
+
   const int& fd() const;
   const Server& server() const;
   const std::string& request_str() const;
   const std::string& response_str() const;
-
   const Transaction& transaction() const;
   Transaction& transaction_instance();
 
