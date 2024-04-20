@@ -63,7 +63,6 @@ class Transaction {
   int HttpDelete();
 
   void SetCgiEnv();
-  void FreeCgiEnv();
 
   void SetAllowdMethod();
   void SetEntityHeaders();
