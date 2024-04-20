@@ -32,16 +32,21 @@ class Transaction {
         Getters
   */
   const Configuration& config() const;
+  std::string method() const;
   const Uri& uri() const;
   Uri& uri();
+  const HeadersIn& headers_in() const;
+  std::string body_in() const;
+  std::string http_version() const;
+  std::string server_version() const;
+  int status_code() const;
+  std::string target_resource() const;
+  const HeadersOut& headers_out() const;
+  std::string body_out() const;
+  std::string response() const;
   const Entity& entity() const;
   Entity& entity();
   const Cgi& cgi() const;
-  const std::string& method() const;
-  const HeadersIn& headers_in() const;
-  const HeadersOut& headers_out() const;
-  const std::string& body() const;
-  const int& status_code() const;
 
   /*
         Setters

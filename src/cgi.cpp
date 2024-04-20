@@ -15,14 +15,6 @@ Cgi::Cgi(const Cgi& obj) { *this = obj; }
 Cgi::~Cgi() {}
 Cgi& Cgi::operator=(const Cgi& obj) {
   if (this != &obj) {
-    // this->argv_ = obj.argv_;
-    // this->envp_ = obj.envp_;
-    this->cgi2server_fd_[0] = obj.cgi2server_fd_[0];
-    this->cgi2server_fd_[1] = obj.cgi2server_fd_[1];
-    this->server2cgi_fd_[0] = obj.server2cgi_fd_[0];
-    this->server2cgi_fd_[1] = obj.server2cgi_fd_[1];
-    this->pid_ = obj.pid_;
-    this->on_ = obj.on_;
   }
   return *this;
 }
