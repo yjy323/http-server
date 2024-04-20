@@ -16,7 +16,6 @@
 #define KEEP_ALIVE_TIMEOUT_SEC 5
 #define SERVER_UDATA (1 << 0)
 #define CLIENT_UDATA (1 << 1)
-#define CGI_UDATA (1 << 1)
 
 #define REQUEST_HEADER_END CRLF CRLF
 
@@ -33,7 +32,6 @@
 Multiplexer::Multiplexer()
     : server_udata_(SERVER_UDATA),
       client_udata_(CLIENT_UDATA),
-      cgi_udata_(CGI_UDATA),
       servers_(),
       clients_(),
       eh_() {}

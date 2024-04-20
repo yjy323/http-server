@@ -43,7 +43,6 @@ class Multiplexer {
 
   int server_udata_;
   int client_udata_;
-  int cgi_udata_;
 
   std::vector<Server> servers_;
   std::map<int, Client> clients_;
