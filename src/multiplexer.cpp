@@ -10,11 +10,11 @@
 static const bool REUSABLE = false;
 static const int BACKLOG = 128;
 static const int EVENT_SIZE = 30;
-static const int POLLING_TIMEOUT = 1000;
-static const int EVENT_TIMEOUT = 3000;
-static const int CGI_EVENT_TIMEOUT = 1000;
-static const int KEEP_ALIVE_TIMEOUT = 5;
-static const int SEND_EVENT_TIMEOUT = 1000;
+static const int POLLING_TIMEOUT = 10;
+static const int EVENT_TIMEOUT = 10;
+static const int CGI_EVENT_TIMEOUT = 5;
+static const int KEEP_ALIVE_TIMEOUT = 10;
+static const int SEND_EVENT_TIMEOUT = 10;
 static int SERVER_UDATA = (1 << 0);
 static int CLIENT_UDATA = (1 << 1);
 
@@ -216,6 +216,8 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
     DisconnetClient(client);
   }
 
+  std::cout << "Response Message Send Success." << std::endl;
+
   client.ResetClientInfo();
 }
 
@@ -235,10 +237,13 @@ void Multiplexer::HandleCgiEvent(struct kevent& event) {
 void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
   if (*static_cast<int*>(event.udata) == SERVER_UDATA) {
   } else if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
+    if (clients_.find(event.ident) == clients_.end()) return;
     Client& client = *clients_[event.ident];
 
     DisconnetClient(client);
   } else {
+    if (clients_.find(*static_cast<int*>(event.udata)) == clients_.end())
+      return;
     Client& client = *clients_[*static_cast<int*>(event.udata)];
 
     if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
