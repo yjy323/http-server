@@ -32,7 +32,8 @@ Transaction::Transaction()
       headers_out_(),
       body_out_(""),
       entity_(),
-      cgi_() {
+      cgi_(),
+      response_("") {
   headers_out_.server = "webserv/" SERVER_VERSION;
   headers_out_.connection = HTTP_CONNECTION_OPTION_KEEP_ALIVE;
 }
@@ -53,7 +54,8 @@ Transaction& Transaction::operator=(const Transaction& obj) {
     this->headers_out_ = obj.headers_out_;
     this->body_out_ = obj.body_out_;
     this->entity_ = obj.entity_;
-    this->cgi_ = obj.cgi_;
+    this->response_ = obj.response_;
+    // this->cgi_ = obj.cgi;
   }
   return *this;
 }
@@ -61,25 +63,33 @@ Transaction& Transaction::operator=(const Transaction& obj) {
 /*
         Getter
 */
-const std::string& Transaction::method() const { return this->method_; }
-const Uri& Transaction::uri() const { return this->uri_; }
-Uri& Transaction::uri() { return this->uri_; }
-const Entity& Transaction::entity() const { return this->entity_; }
-Entity& Transaction::entity() { return this->entity_; }
-const Cgi& Transaction::cgi() const { return this->cgi_; }
-const HeadersIn& Transaction::headers_in() const { return this->headers_in_; }
-const std::string& Transaction::body() const { return this->body_in_; }
 const Transaction::Configuration& Transaction::config() const {
   return this->config_;
 }
-const int& Transaction::status_code() const { return this->status_code_; }
+std::string Transaction::method() const { return this->method_; }
+const Uri& Transaction::uri() const { return this->uri_; }
+Uri& Transaction::uri() { return this->uri_; }
+const HeadersIn& Transaction::headers_in() const { return this->headers_in_; }
+std::string Transaction::body_in() const { return this->body_in_; }
+std::string Transaction::http_version() const { return this->http_version_; }
+std::string Transaction::server_version() const {
+  return this->server_version_;
+}
+int Transaction::status_code() const { return this->status_code_; }
+std::string Transaction::target_resource() const {
+  return this->target_resource_;
+}
+const HeadersOut& Transaction::headers_out() const {
+  return this->headers_out_;
+}
+std::string Transaction::body_out() const { return this->body_out_; }
+const Entity& Transaction::entity() const { return this->entity_; }
+Entity& Transaction::entity() { return this->entity_; }
+const Cgi& Transaction::cgi() const { return this->cgi_; }
+std::string Transaction::response() const { return this->response_; }
 
 void Transaction::set_status_code(const int& status_code) {
   this->status_code_ = status_code;
-}
-
-const HeadersOut& Transaction::headers_out() const {
-  return this->headers_out_;
 }
 
 int Transaction::ParseRequestLine(std::string& request_line) {
