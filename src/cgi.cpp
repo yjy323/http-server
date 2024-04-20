@@ -3,6 +3,8 @@
 #define CGI_FILE ".cgi\0"
 #define PY_FILE ".py\0"
 
+typedef std::vector<char* const>::const_iterator Iterator;
+
 Cgi::Cgi()
     : argv_(std::vector<char* const>()),
       envp_(std::vector<char* const>()),
@@ -12,9 +14,27 @@ Cgi::Cgi()
       on_(false) {}
 
 Cgi::Cgi(const Cgi& obj) { *this = obj; }
-Cgi::~Cgi() {}
+Cgi::~Cgi() {
+  for (Iterator it = envp_.begin(); it != envp_.end(); ++it) {
+    delete *it;
+  }
+}
 Cgi& Cgi::operator=(const Cgi& obj) {
   if (this != &obj) {
+    for (Iterator it = obj.envp_.begin(); it != obj.envp_.end(); ++it) {
+      this->argv_.push_back(*it);
+    }
+    for (Iterator it = obj.envp_.begin(); it != obj.envp_.end(); ++it) {
+      char* env = new char[std::strlen(*it) + 1];
+      std::strcpy(env, *it);
+      this->envp_.push_back(env);
+    }
+    this->cgi2server_fd_[0] = obj.cgi2server_fd_[0];
+    this->cgi2server_fd_[1] = obj.cgi2server_fd_[1];
+    this->server2cgi_fd_[0] = obj.server2cgi_fd_[0];
+    this->server2cgi_fd_[1] = obj.server2cgi_fd_[1];
+    this->pid_ = obj.pid_;
+    this->on_ = obj.on_;
   }
   return *this;
 }
