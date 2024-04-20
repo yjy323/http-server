@@ -7,371 +7,274 @@
 
 #include "core.hpp"
 
-#define IS_REUSABLE true
-#define DEFAULT_BACKLOG 128
-#define EVENT_SIZE 30
-#define BUFFER_SIZE 2048
-#define EVENT_POLL_TIME 3
-#define READ_EVENT_TIMEOUT_SEC 3
-#define KEEP_ALIVE_TIMEOUT_SEC 5
-#define SERVER_UDATA (1 << 0)
-#define CLIENT_UDATA (1 << 1)
+static const bool REUSABLE = false;
+static const int BACKLOG = 128;
+static const int EVENT_SIZE = 30;
+static const int POLLING_TIMEOUT = 1000;
+static const int EVENT_TIMEOUT = 3000;
+static const int CGI_EVENT_TIMEOUT = 1000;
+static const int KEEP_ALIVE_TIMEOUT = 5;
+static const int SEND_EVENT_TIMEOUT = 1000;
+static int SERVER_UDATA = (1 << 0);
+static int CLIENT_UDATA = (1 << 1);
 
-#define REQUEST_HEADER_END CRLF CRLF
+Multiplexer::Multiplexer() : servers_(), clients_(), eh_() {}
 
-#define KQUEUE_ERROR_MASSAGE "kqueue() failed."
-#define KEVENT_ERROR_MASSAGE "kevent() failed."
-#define RECV_ERROR_MASSAGE "recv() from client failed."
-#define ACCEPT_ERROR_MASSAGE "accept() from client failed."
-#define UNDEFINE_FILTER_ERROR_MASSAGE "catch undefine filter."
-#define NMANAGE_CLIENT_ERROR_MASSAGE \
-  "A message request to a client that is not being managed."
-#define REQUEST_HEADER_PARSE_ERROR_MASSAGE \
-  "An error occurred while parsing header."
+Multiplexer::~Multiplexer() {
+  for (Servers::iterator it = servers_.begin(); it != servers_.end(); it++)
+    if (it->second != 0) delete it->second;
+  for (Clients::iterator it = clients_.begin(); it != clients_.end(); it++)
+    if (it->second != 0) delete it->second;
+}
 
-Multiplexer::Multiplexer()
-    : server_udata_(SERVER_UDATA),
-      client_udata_(CLIENT_UDATA),
-      servers_(),
-      clients_(),
-      eh_() {}
+int Multiplexer::Init(const Configuration& config) {
+  servers_.clear();
 
-Multiplexer::~Multiplexer() {}
-
-int Multiplexer::Init(const Configuration& configuration) {
-  this->servers_.clear();
-
-  if (InitConfiguration(configuration) == ERROR || InitServer() == ERROR ||
-      this->eh_.Init(EVENT_SIZE) == ERROR)
+  if (InitServers(config) == ERROR || eh_.Init(EVENT_SIZE) == ERROR)
     return ERROR;
 
   return OK;
 }
 
-int Multiplexer::InitConfiguration(const Configuration& configuration) {
-  for (Configuration::const_iterator it = configuration.begin();
-       it != configuration.end(); it++) {
-    AddConfInServers(*it);
+int Multiplexer::StartServers() {
+  for (Servers::const_iterator it = servers_.begin(); it != servers_.end();
+       it++) {
+    if (Multiplexer::StartServer(*(it->second)) == ERROR) {
+      return ERROR;
+    }
+  }
+
+  return 0;
+}
+
+int Multiplexer::StartServer(Server& server) {
+  int opt_val = 1;
+  if (REUSABLE || server.Setsockopt(SOL_SOCKET, SO_REUSEADDR, &opt_val,
+                                    sizeof(opt_val)) == -1) {
+    return ERROR;
+  }
+
+  if (server.Bind() == -1 || server.Listen(BACKLOG) == -1 ||
+      server.SetNonBlock() == -1) {
+    return ERROR;
+  }
+
+  if (eh_.Add(server.fd(), EVFILT_READ, 0, 0, 0,
+              static_cast<void*>(&SERVER_UDATA)) == ERROR) {
+    return ERROR;
   }
 
   return OK;
 }
 
-int Multiplexer::InitServer() {
-  for (std::vector<Server>::iterator it = this->servers_.begin();
-       it != this->servers_.end(); it++) {
-    if (it->Open() == ERROR || (IS_REUSABLE && it->SetReusable() == ERROR) ||
-        it->Bind() == ERROR || it->Listen(DEFAULT_BACKLOG) == ERROR)
-      return ERROR;
+int Multiplexer::InitServers(const Configuration& config) {
+  std::map<int, Server::Configurations> configs_by_port;
 
-    std::clog << "server[ fd: " << it->fd()
-              << " ] open 완료 (open, bind, listen)" << std::endl;
+  for (Configuration::const_iterator it = config.begin(); it != config.end();
+       it++) {
+    if (configs_by_port.find(it->port()) == configs_by_port.end()) {
+      configs_by_port[it->port()] = Server::Configurations();
+    }
+    configs_by_port[it->port()].push_back(*it);
+  }
+
+  for (std::map<int, Server::Configurations>::iterator it =
+           configs_by_port.begin();
+       it != configs_by_port.end(); it++) {
+    if (InitServer(it->second) == ERROR) {
+      return ERROR;
+    }
   }
 
   return OK;
 }
 
-int Multiplexer::Multiplexing() {
-  for (std::vector<Server>::const_iterator it = this->servers_.begin();
-       it != this->servers_.end(); it++) {
-    if (this->eh_.Regist(it->fd(), EVFILT_READ, 0, 0, 0,
-                         static_cast<void*>(&this->server_udata_)) == ERROR)
-      return ERROR;
+int Multiplexer::InitServer(const Server::Configurations& configs) {
+  Socket::Info info;
+  info.domain = AF_INET;
+  info.type = SOCK_STREAM;
+  info.protocol = 0;
 
-    std::clog << "server[ fd: " << it->fd() << " ] read event 등록 완료"
-              << std::endl;
+  Server* server = new Server(info, configs);
+  if (server->fd() == -1) {
+    return ERROR;
   }
 
-  return StartServer();
+  servers_[server->fd()] = server;
+
+  return OK;
 }
 
-int Multiplexer::StartServer() {
+int Multiplexer::OpenServers() {
   while (1) {
     int nev;
 
-    std::clog << "event 대기상태 진입" << std::endl;
-    if (this->eh_.Polling(nev, EVENT_POLL_TIME) == ERROR) continue;
+    if (eh_.Polling(nev, POLLING_TIMEOUT) == ERROR) {
+      std::cout << "polling error" << std::endl;
+      continue;
+    }
+    std::cout << "nev: " << nev << std::endl;
     HandleEvents(nev);
   }
+  return OK;
 }
 
 void Multiplexer::HandleEvents(int nev) {
-  struct kevent* events = this->eh_.events();
+  struct kevent* events = eh_.events();
 
   for (int i = 0; i < nev; ++i) {
-    if (events[i].filter == EVFILT_READ) {
+    std::cout << "[event ident] " << events[i].ident << std::endl;
+    if (events[i].flags | EV_ERROR && !(events[i].filter & EVFILT_PROC)) {
+      std::clog << "[event type] ERROR" << std::endl;
+      HandleErrorEvent(events[i]);
+    } else if (events[i].filter == EVFILT_READ) {
       std::clog << "[event type] READ" << std::endl;
       HandleReadEvent(events[i]);
     } else if (events[i].filter == EVFILT_WRITE) {
       std::clog << "[event type] WRITE" << std::endl;
       HandleWriteEvent(events[i]);
-      this->clients_[events[i].ident].ResetClientTransactionInfo();
+      // clients_[events[i].ident].ResetClientTransactionInfo();
     } else if (events[i].filter == EVFILT_PROC) {
       std::clog << "[event type] PROC" << std::endl;
       HandleCgiEvent(events[i]);
     } else if (events[i].filter == EVFILT_TIMER) {
       std::clog << "[event type] TIMER" << std::endl;
-      eh_.DeleteAll(events[i].ident);
-      CloseWithClient(events[i].ident);
+      HandleTimeoutEvent(events[i]);
     } else {
-      std::cerr << UNDEFINE_FILTER_ERROR_MASSAGE << std::endl;
+      std::cerr << "UNDEFINE_FILTER_ERROR_MASSAGE" << std::endl;
     }
   }
 }
 
-void Multiplexer::HandleReadEvent(struct kevent event) {
-  if (*static_cast<int*>(event.udata) == server_udata_) {
-    std::clog << "[READ event sub type] connection" << std::endl;
+void Multiplexer::HandleErrorEvent(struct kevent& event) {
+  Client& client = *clients_[event.ident];
+  DisconnetClient(client);
+}
+
+void Multiplexer::HandleReadEvent(struct kevent& event) {
+  if (*static_cast<int*>(event.udata) == SERVER_UDATA) {
     AcceptWithClient(event.ident);
-  } else if (*static_cast<int*>(event.udata) == client_udata_) {
-    std::clog << "[READ event sub type] message" << std::endl;
-    Client& client = this->clients_[event.ident];
+  } else if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
+    Client& client = *clients_[event.ident];
 
-    std::string buffer;
-    if (ReadClientMessage(client.fd(), buffer) == ERROR) return;
+    if (this->ReceiveRequest(client) == ERROR) {
+      DisconnetClient(client);
+      return;
+    }
 
-    std::clog << "server[ " << client.server().fd()
-              << " ]: 메세지 from client[ " << client.fd() << " ]" << std::endl;
-
-    client.set_request_str(client.request_str() + buffer);
-
-    if (size_t header_end = client.request_str().find(REQUEST_HEADER_END) !=
-                            std::string::npos) {
-      std::clog << " [ Request Message start ]  " << std::endl;
-      std::clog << client.request_str() << std::endl;
-      std::clog << " [ Request Message end ]  " << std::endl;
-
-      int http_status = client.transaction_instance().ParseRequestHeader(
-          client.request_str());
-
-      const ServerConfiguration& sc =
-          client.server().ConfByHost(client.transaction().headers_in().host);
-      client.transaction_instance().uri().ReconstructTargetUri(
-          client.transaction().headers_in().host);
-      client.transaction_instance().GetConfiguration(sc);
+    if (client.IsReceiveRequestHeaderComplete()) {
+      int http_status = client.ParseRequestHeader();
 
       if (http_status != HTTP_OK) {
-        std::cerr << REQUEST_HEADER_PARSE_ERROR_MASSAGE << std::endl;
-
-        std::clog << "[ Parse Error Request ]" << std::endl
-                  << client.request_str() << std::endl;
+        client.transaction().HttpProcess();
+        client.CreateResponseMessage();
+        if (this->eh_.AddWithTimer(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0,
+                                   &CLIENT_UDATA,
+                                   SEND_EVENT_TIMEOUT) == ERROR) {
+          DisconnetClient(client);
+          return;
+        }
       } else {
-        std::string request_body = client.request_str().substr(
-            client.request_str().find(REQUEST_HEADER_END) +
-            std::strlen(REQUEST_HEADER_END));
-        if (IsReadFullBody(client, request_body)) {
-          client.transaction_instance().HttpProcess();
+        if (client.IsReceiveRequestBodyComplete()) {
+          std::cout << "[Request Start]" << std::endl;
+          std::cout << client.request() << std::endl;
+          std::cout << "[Request End]" << std::endl;
+          client.transaction().HttpProcess();
           if (client.transaction().cgi().on()) {
-            pid_t pid = client.transaction_instance().ExecuteCgi();
-            if (pid > 0 &&
-                this->eh_.Regist(pid, EVFILT_PROC, EV_ONESHOT, 0, 0,
-                                 static_cast<void*>(&this->client_udata_)) ==
-                    ERROR) {
-              CloseWithClient(client.fd());
-              this->eh_.DeleteAll(client.fd());
-
+            pid_t pid = client.transaction().ExecuteCgi();
+            if (pid > 0 && eh_.AddWithTimer(pid, EVFILT_PROC, EV_ONESHOT, 0, 0,
+                                            static_cast<void*>(&client.fd()),
+                                            CGI_EVENT_TIMEOUT) == ERROR) {
               return;
             }
           }
-          client.set_response_str(
-              client.transaction_instance().CreateResponseMessage());
-          if (this->eh_.Regist(event.ident, EVFILT_WRITE, EV_ONESHOT, 0, 0,
-                               static_cast<void*>(&this->client_udata_)) ==
-              ERROR) {
-            CloseWithClient(client.fd());
-            this->eh_.DeleteAll(client.fd());
 
+          client.CreateResponseMessage();
+          if (this->eh_.AddWithTimer(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0,
+                                     0, &CLIENT_UDATA,
+                                     SEND_EVENT_TIMEOUT) == ERROR) {
+            DisconnetClient(client);
             return;
           }
         }
       }
     }
   } else {
-    std::cerr << NMANAGE_CLIENT_ERROR_MASSAGE << std::endl;
   }
 }
 
-void Multiplexer::HandleWriteEvent(struct kevent event) {
-  Client& client = this->clients_[event.ident];
+void Multiplexer::HandleWriteEvent(struct kevent& event) {
+  Client& client = *clients_[event.ident];
 
-  std::clog << std::endl << " [ Response Start ] " << std::endl;
+  std::cout << "[Response Message Start]" << std::endl;
+  std::cout << client.response() << std::endl;
+  std::cout << "[Response Message End]" << std::endl;
 
-  std::clog << client.response_str() << std::endl;
-  std::clog << std::endl << " [ Response End ] " << std::endl;
-
-  if (send(client.fd(), client.response_str().c_str(),
-           client.response_str().length(), 0) == -1) {
-    CloseWithClient(client.fd());
-    this->eh_.DeleteAll(client.fd());
+  if (client.SendResponseMessage() == -1 ||
+      this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
+                    KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
+    DisconnetClient(client);
   }
 
-  if (this->eh_.Regist(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
-                       KEEP_ALIVE_TIMEOUT_SEC * 1000,
-                       static_cast<void*>(&this->client_udata_)) == ERROR) {
-    CloseWithClient(client.fd());
-    this->eh_.DeleteAll(client.fd());
+  client.ResetClientInfo();
+}
+
+void Multiplexer::HandleCgiEvent(struct kevent& event) {
+  Client& client = *clients_[*reinterpret_cast<int*>(event.udata)];
+  if (event.flags & EV_ERROR) {
+    client.transaction().set_status_code(HTTP_BAD_GATEWAY);
+  }
+  client.CreateResponseMessageByCgi();
+
+  if (eh_.Add(event.ident, EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
+      ERROR) {
+    DisconnetClient(client);
   }
 }
 
-void Multiplexer::HandleCgiEvent(struct kevent event) {
-  Client& client = this->clients_[event.ident];
-  const Cgi& cgi = client.transaction_instance().cgi();
-  std::string cgi_res;
-  char buffer[BUFFER_SIZE];
-  ssize_t bytes_read;
+void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
+  if (*static_cast<int*>(event.udata) == SERVER_UDATA) {
+  } else if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
+    Client& client = *clients_[event.ident];
 
-  while ((bytes_read = read(cgi.cgi2server_fd()[1], buffer, BUFFER_SIZE - 1)) >
-         0) {
-    buffer[BUFFER_SIZE - 1] = 0;
-
-    cgi_res += buffer;
-  }
-  if (bytes_read == -1) {
-    client.transaction_instance().set_status_code(HTTP_BAD_GATEWAY);
+    DisconnetClient(client);
   } else {
-    client.transaction_instance().entity().ReadBuffer(cgi_res.c_str(),
-                                                      cgi_res.length());
-    client.transaction_instance().CreateResponseMessage();
+    Client& client = *clients_[*static_cast<int*>(event.udata)];
+
+    if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
+        ERROR) {
+      DisconnetClient(client);
+    }
   }
-
-  if (this->eh_.Regist(event.ident, EVFILT_WRITE, EV_ONESHOT, 0, 0,
-                       static_cast<void*>(&this->client_udata_)) == ERROR) {
-    CloseWithClient(client.fd());
-    this->eh_.DeleteAll(client.fd());
-  }
-}
-
-int Multiplexer::ReadClientMessage(int client_fd, std::string& message) {
-  char buffer[BUFFER_SIZE];
-  ssize_t bytes_read = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-
-  if (bytes_read == -1) {
-    CloseWithClient(client_fd);
-
-    this->eh_.DeleteAll(client_fd);
-
-    std::cerr << RECV_ERROR_MASSAGE << std::endl;
-
-    return ERROR;
-  }
-
-  buffer[bytes_read] = 0;
-  message = buffer;
-
-  return OK;
 }
 
 int Multiplexer::AcceptWithClient(int server_fd) {
-  struct sockaddr_in client_addr;
-  socklen_t client_addr_len = sizeof(client_addr);
+  Server& server = *servers_[server_fd];
 
-  int client_fd =
-      accept(server_fd, (struct sockaddr*)&client_addr, &client_addr_len);
-  if (client_fd == -1) {
-    std::cerr << ACCEPT_ERROR_MASSAGE << std::endl;
+  int client_fd = server.Accept();
+  if (client_fd == -1) return ERROR;
+  clients_[client_fd] = new Client(server, client_fd);
+  clients_[client_fd]->SetNonBlock();
 
-    return ERROR;
-  }
-
-  for (std::vector<Server>::const_iterator it = this->servers_.begin();
-       it != this->servers_.end(); it++) {
-    if (it->fd() == server_fd) {
-      this->clients_[client_fd] = Client(*it, client_fd);
-      break;
-    }
-  }
-
-  if (this->eh_.Regist(client_fd, EVFILT_READ, 0, 0, 0,
-                       static_cast<void*>(&this->client_udata_)) == ERROR)
-    return ERROR;
-  std::clog << "client[ fd: " << client_fd << " ] read event 등록 완료"
-            << std::endl;
-
-  if (this->eh_.Regist(client_fd, EVFILT_TIMER, EV_ONESHOT, 0,
-                       READ_EVENT_TIMEOUT_SEC * 1000,
-                       static_cast<void*>(&this->client_udata_)) == ERROR)
+  if (eh_.AddWithTimer(client_fd, EVFILT_READ, 0, 0, 0, &CLIENT_UDATA,
+                       EVENT_TIMEOUT) == ERROR)
     return ERROR;
 
-  std::clog << "client[ fd: " << client_fd << "] 성공적으로 connect"
-            << std::endl;
-
+  std::cout << "Successful Accept With " << client_fd << std::endl;
   return OK;
 }
 
-int Multiplexer::CloseWithClient(int client_fd) {
-  close(client_fd);
-  this->clients_.erase(client_fd);
+void Multiplexer::DisconnetClient(Client& client) {
+  delete &client;
+  clients_.erase(client.fd());
+  eh_.Delete(client.fd());
+}
 
-  std::clog << "closed with [fd: " << client_fd << "]" << std::endl;
+int Multiplexer::ReceiveRequest(Client& client) {
+  ssize_t bytes_read = client.ReceiveRequest();
 
+  if (bytes_read == -1) {
+    return ERROR;
+  }
   return OK;
-}
-
-bool Multiplexer::IsReadFullBody(Client& client,
-                                 const std::string& request_body) {
-  const HeadersIn& headers_in = client.transaction().headers_in();
-  const ServerConfiguration::LocationConfiguration& config =
-      client.transaction().config();
-
-  if (IsRequestBodyAllowed(client.transaction().method())) {
-    return true;
-  }
-
-  if (headers_in.content_length_n >= 0) {
-    if (request_body.length() >
-        static_cast<size_t>(config.client_max_body_size())) {
-      client.transaction_instance().set_status_code(
-          HTTP_REQUEST_ENTITY_TOO_LARGE);
-    } else if (request_body.length() <
-               static_cast<size_t>(headers_in.content_length_n)) {
-      return false;
-    }
-  } else if (headers_in.transfer_encoding == "chunked") {
-    if (request_body.find("0" CRLF) == std::string::npos) {
-      return false;
-    }
-  } else {
-    if (request_body.length() > 0) {
-      client.transaction_instance().set_status_code(HTTP_LENGTH_REQUIRED);
-    }
-  }
-
-  return true;
-}
-
-void Multiplexer::AddConfInServers(const ServerConfiguration& server_conf) {
-  if (IsExistPort(server_conf.port())) {
-    ServerInstanceByPort(server_conf.port()).AddConf(server_conf);
-  } else {
-    Server server = Server();
-    server.AddConf(server_conf);
-
-    this->servers_.push_back(server);
-  }
-}
-
-bool Multiplexer::IsExistPort(int port) {
-  for (std::vector<Server>::const_iterator it = this->servers_.begin();
-       it != this->servers_.end(); it++) {
-    if (it->port() == port) return true;
-  }
-
-  return false;
-}
-
-bool Multiplexer::IsRequestBodyAllowed(const std::string& method) {
-  if (method == "GET" || method == "DELETE") return false;
-
-  return true;
-}
-
-Server& Multiplexer::ServerInstanceByPort(int port) {
-  for (std::vector<Server>::iterator it = this->servers_.begin();
-       it != this->servers_.end(); it++) {
-    if (it->port() == port) {
-      return *it;
-    }
-  }
-
-  return *this->servers_.end();
 }

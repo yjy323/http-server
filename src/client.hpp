@@ -4,35 +4,52 @@
 #include <string>
 
 #include "server.hpp"
+#include "socket.hpp"
 #include "transaction.hpp"
 
-class Client {
+class Client : public Socket {
  public:
-  Client();
   Client(const Server& server, int fd);
-  Client(const Client& ref);
   virtual ~Client();
 
   Client& operator=(const Client& ref);
 
-  void ResetClientTransactionInfo();
+  void ResetClientInfo();
 
-  const int& fd() const;
-  const Server& server() const;
-  const std::string& request_str() const;
-  const std::string& response_str() const;
+  ssize_t ReceiveRequest();
+  int ParseRequestHeader();
+  void CreateResponseMessage();
+  void CreateResponseMessageByCgi();
+  int SendResponseMessage();
+
+  bool IsReceiveRequestHeaderComplete();
+  bool IsReceiveRequestBodyComplete();
+
+  const Server::Configurations& server_configs() const;
+  const std::string& request() const;
+  const std::string& response() const;
   const Transaction& transaction() const;
-  Transaction& transaction_instance();
+  Transaction& transaction();
 
-  void set_request_str(const std::string& request);
-  void set_response_str(const std::string& response);
+  void set_request(const std::string& request);
+  void set_response(const std::string& response);
+
+ protected:
+  Client();
+  Client(const Client& ref);
 
  private:
-  Server server_;
-  int fd_;
+  int ReadCgi(std::string& cgi_res);
+
+  bool IsRequestBodyAllowedMethod();
+
+  const Server::Configuration& conf_by_host(const std::string& host);
+  const std::string request_body();
+
+  Server::Configurations server_configs_;
   Transaction transaction_;
-  std::string request_str_;
-  std::string response_str_;
+  std::string request_;
+  std::string response_;
 };
 
 #endif

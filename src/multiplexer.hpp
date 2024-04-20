@@ -14,38 +14,36 @@ class Multiplexer {
   Multiplexer();
   virtual ~Multiplexer();
 
-  int Init(const Configuration& configuration);
-  int Multiplexing();
+  int Init(const Configuration& config);
+  int StartServers();
+  int OpenServers();
 
+ protected:
  private:
+  typedef std::map<int, Server*> Servers;
+  typedef std::map<int, Client*> Clients;
+
   Multiplexer(const Multiplexer& ref);
 
   Multiplexer& operator=(const Multiplexer& ref);
 
-  int InitConfiguration(const Configuration& configuration);
-  int InitServer();
+  int InitServers(const Configuration& config);
+  int InitServer(const Server::Configurations& config);
+  int StartServer(Server& server);
 
-  int StartServer();
   void HandleEvents(int nev);
-  void HandleReadEvent(struct kevent event);
-  void HandleWriteEvent(struct kevent event);
-  void HandleCgiEvent(struct kevent event);
-  int ReadClientMessage(int client_fd, std::string& message);
+  void HandleErrorEvent(struct kevent& event);
+  void HandleReadEvent(struct kevent& event);
+  void HandleWriteEvent(struct kevent& event);
+  void HandleCgiEvent(struct kevent& event);
+  void HandleTimeoutEvent(struct kevent& event);
+
   int AcceptWithClient(int server_fd);
-  int CloseWithClient(int client_fd);
+  void DisconnetClient(Client& client);
+  int ReceiveRequest(Client& client);
 
-  bool IsReadFullBody(Client& client, const std::string& request_body);
-  bool IsExistPort(int port);
-  bool IsRequestBodyAllowed(const std::string& method);
-  void AddConfInServers(const ServerConfiguration& server_conf);
-
-  Server& ServerInstanceByPort(int port);
-
-  int server_udata_;
-  int client_udata_;
-
-  std::vector<Server> servers_;
-  std::map<int, Client> clients_;
+  Servers servers_;
+  Clients clients_;
   EventHandler eh_;
 };
 
