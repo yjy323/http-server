@@ -12,7 +12,7 @@ bool IsHost(std::string s) {
   if (delimiter_pos != std::string::npos) {
     // port = *DIGIT
     sub_component = s.substr(delimiter_pos + 1);
-    long port = strtol(sub_component.c_str(), &end_ptr, 10);
+    long port = std::strtol(sub_component.c_str(), &end_ptr, 10);
     if (end_ptr == sub_component || *end_ptr != 0 || port < 0 || port > 65535) {
       return false;
     }

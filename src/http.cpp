@@ -114,7 +114,7 @@ int HttpHost(HeadersIn& headers_in, std::string value) {
 int HttpContentLength(HeadersIn& headers_in, std::string value) {
   char* end_ptr;
 
-  ssize_t content_length_n = strtol(value.c_str(), &end_ptr, 10);
+  ssize_t content_length_n = std::strtol(value.c_str(), &end_ptr, 10);
   if (headers_in.content_length != "" || end_ptr == value || *end_ptr != 0) {
     return HTTP_BAD_REQUEST;
   } else {

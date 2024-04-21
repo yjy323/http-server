@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <fstream>
@@ -29,7 +30,6 @@ class Entity {
   std::string CreateDirectoryListingPage(std::string path,
                                          std::string request_target);
   std::string ReadFile(const char* path);
-  void ReadBuffer(const char* buff, size_t size);
 
   std::string path() const;
   eType type();

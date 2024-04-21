@@ -16,12 +16,12 @@ class Transaction {
   ~Transaction();
   Transaction& operator=(const Transaction& obj);
 
-  // Request Context
-  const Configuration& GetConfiguration(const ServerConfiguration&);
-
   // Request
   int ParseRequestHeader(std::string buff);
   int ParseRequestBody(std::string buff, size_t content_length);
+
+  // Request Context
+  const Configuration& GetConfiguration(const ServerConfiguration&);
 
   // Response
   int HttpProcess();
@@ -34,7 +34,6 @@ class Transaction {
   const Configuration& config() const;
   std::string method() const;
   const Uri& uri() const;
-  Uri& uri();
   const HeadersIn& headers_in() const;
   std::string body_in() const;
   std::string http_version() const;
@@ -47,6 +46,9 @@ class Transaction {
   const Entity& entity() const;
   Entity& entity();
   const Cgi& cgi() const;
+
+  Uri& uri_instance();
+  Cgi& cgi_instance();
 
   /*
         Setters
@@ -63,13 +65,13 @@ class Transaction {
   int HttpDelete();
 
   void SetCgiEnv();
-
   void SetAllowdMethod();
-  void SetEntityHeaders();
+  void SetErrorPage();
+  void SetResponseFromEntity();
+  void SetResponseFromCgi();
   std::string AppendStatusLine();
   std::string AppendResponseHeader(const std::string key,
                                    const std::string value);
-  void SetErrorPage();
 
   // Request Context
   Configuration config_;

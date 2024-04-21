@@ -14,7 +14,16 @@
 
 #include "http.hpp"
 
-class Response;
+struct CgiHeaders {
+  std::string content_type;
+  std::string location;
+  std::string status;
+
+  int status_code;
+};
+void CgiContentType(CgiHeaders&, const std::string);
+void CgiLocation(CgiHeaders&, const std::string);
+void CgiStatus(CgiHeaders&, const std::string);
 
 class Cgi {
  public:
@@ -27,25 +36,33 @@ class Cgi {
   int ExecuteCgi(const char*, const char*, const char*);
   bool TurnOn();
 
-  const std::vector<char* const>& argv() const;
-  const std::vector<char* const>& envp() const;
-  std::vector<char* const>& argv();
-  std::vector<char* const>& envp();
+  const std::vector<char*>& argv() const;
+  const std::vector<char*>& envp() const;
+  std::vector<char*>& argv();
+  std::vector<char*>& envp();
   const int* cgi2server_fd() const;
   const int* server2cgi_fd() const;
   pid_t pid() const;
   bool on() const;
+  std::string response() const;
+  CgiHeaders headers() const;
+  CgiHeaders& headers_instance();
+
+  void set_response(std::string response);
 
  private:
   bool IsCgiProgram(const char*);
   bool IsCgiScript(const char*);
 
-  std::vector<char* const> argv_;
-  std::vector<char* const> envp_;
+  std::vector<char*> argv_;
+  std::vector<char*> envp_;
   int cgi2server_fd_[2];
   int server2cgi_fd_[2];
   pid_t pid_;
   bool on_;
+
+  std::string response_;
+  CgiHeaders headers_;
 };
 
 #endif

@@ -5,13 +5,41 @@
 
 typedef std::vector<char* const>::const_iterator Iterator;
 
+/*
+ Cgi 비멤버 함수
+*/
+void CgiContentType(CgiHeaders& headers, const std::string value) {
+  headers.content_type = value;
+}
+
+void CgiLocation(CgiHeaders& headers, const std::string value) {
+  headers.location = value;
+}
+
+void CgiStatus(CgiHeaders& headers, const std::string value) {
+  char* end_ptr = NULL;
+  headers.status = value;
+  std::string status_code = value.substr(value.find(' '));
+  long status_code_n = std::strtol(status_code.c_str(), &end_ptr, 10);
+  if (end_ptr == value || *end_ptr != 0 ||
+      !(status_code_n >= 100 && status_code_n <= 600)) {
+    headers.status_code = HTTP_BAD_GATEWAY;
+  } else {
+    headers.status_code = status_code_n;
+  }
+}
+
 Cgi::Cgi()
-    : argv_(std::vector<char* const>()),
-      envp_(std::vector<char* const>()),
+    : argv_(std::vector<char*>()),
+      envp_(std::vector<char*>()),
       cgi2server_fd_(),
       server2cgi_fd_(),
       pid_(0),
-      on_(false) {}
+      on_(false),
+      response_(""),
+      headers_() {
+  headers_.status_code = HTTP_OK;
+}
 
 Cgi::Cgi(const Cgi& obj) { *this = obj; }
 Cgi::~Cgi() {
@@ -35,19 +63,26 @@ Cgi& Cgi::operator=(const Cgi& obj) {
     this->server2cgi_fd_[1] = obj.server2cgi_fd_[1];
     this->pid_ = obj.pid_;
     this->on_ = obj.on_;
+    this->response_ = obj.response_;
+    this->headers_ = obj.headers_;
   }
   return *this;
 }
 
-const std::vector<char* const>& Cgi::argv() const { return this->argv_; }
-const std::vector<char* const>& Cgi::envp() const { return this->envp_; }
-std::vector<char* const>& Cgi::argv() { return this->argv_; }
-std::vector<char* const>& Cgi::envp() { return this->envp_; }
+void Cgi::set_response(std::string response) { this->response_ = response; }
 
+const std::vector<char*>& Cgi::argv() const { return this->argv_; }
+const std::vector<char*>& Cgi::envp() const { return this->envp_; }
+std::vector<char*>& Cgi::argv() { return this->argv_; }
+std::vector<char*>& Cgi::envp() { return this->envp_; }
 const int* Cgi::cgi2server_fd() const { return this->cgi2server_fd_; }
 const int* Cgi::server2cgi_fd() const { return this->server2cgi_fd_; }
 pid_t Cgi::pid() const { return this->pid_; }
 bool Cgi::on() const { return this->on_; }
+std::string Cgi::response() const { return this->response_; }
+CgiHeaders Cgi::headers() const { return this->headers_; }
+
+CgiHeaders& Cgi::headers_instance() { return this->headers_; }
 
 bool Cgi::TurnOn() {
   on_ = true;
@@ -72,7 +107,7 @@ bool Cgi::IsCgiProgram(const char* extension) {
 }
 
 bool Cgi::IsCgiScript(const char* extension) {
-  if (std::strncmp(extension, CGI_FILE, std::strlen(PY_FILE) + 1)) {
+  if (std::strncmp(extension, PY_FILE, std::strlen(PY_FILE) + 1)) {
     return true;
   } else {
     return false;
@@ -81,13 +116,12 @@ bool Cgi::IsCgiScript(const char* extension) {
 
 pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
                       const char* form_data) {
-  std::ifstream ifs(path);
-
   if (IsCgiProgram(extension)) {
     argv_.push_back(const_cast<char*>(path));
     argv_.push_back(NULL);
 
   } else if (IsCgiScript(extension)) {
+    std::ifstream ifs(path);
     std::string buffer;
     std::getline(ifs, buffer, '\n');
     if (buffer.size() < 2 || buffer.find("#!") != 0) {

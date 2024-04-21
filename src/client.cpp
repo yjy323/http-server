@@ -48,7 +48,7 @@ int Client::ParseRequestHeader() {
   const std::string& host = transaction_.headers_in().host;
   const Server::Configuration& sc = this->conf_by_host(host);
 
-  transaction_.uri().ReconstructTargetUri(host);
+  transaction_.uri_instance().ReconstructTargetUri(host);
   transaction_.GetConfiguration(sc);
 
   return http_status;
@@ -64,10 +64,10 @@ void Client::CreateResponseMessageByCgi() {
   if (this->ReadCgi(cgi_res) == -1) {
     transaction_.set_status_code(HTTP_BAD_GATEWAY);
   } else {
-    transaction_.entity().ReadBuffer(cgi_res.c_str(), cgi_res.length());
+    transaction_.cgi_instance().set_response(cgi_res);
   }
 
-  transaction_.CreateResponseMessage();
+  response_ = transaction_.CreateResponseMessage();
 }
 
 int Client::SendResponseMessage() {
@@ -79,8 +79,7 @@ int Client::ReadCgi(std::string& cgi_res) {
 
   char buffer[BUFFER_SIZE];
   ssize_t bytes_read;
-
-  while ((bytes_read = read(cgi.cgi2server_fd()[1], buffer, BUFFER_SIZE - 1)) >
+  while ((bytes_read = read(cgi.cgi2server_fd()[0], buffer, BUFFER_SIZE - 1)) >
          0) {
     buffer[BUFFER_SIZE - 1] = 0;
 

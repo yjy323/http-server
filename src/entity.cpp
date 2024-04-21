@@ -203,8 +203,3 @@ std::string Entity::ReadFile(const char* path) {
   length_ = std::to_string(length_n_);
   return body_;
 }
-
-void Entity::ReadBuffer(const char* buff, size_t size) {
-  (void)buff;
-  (void)size;
-}

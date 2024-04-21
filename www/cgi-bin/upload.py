@@ -1,39 +1,43 @@
 #!/usr/bin/python3
+
 import cgi
+import cgitb
 import os
+import datetime
+cgitb.enable()
 
-# 지정된 디렉토리에 파일 저장하는 함수
-def save_uploaded_file(fileitem, upload_dir):
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+# Content-Type 헤더에서 boundary 값을 가져옴
+content_type = "multipart/form-data; boundary=----Boundary123456789"  # 예시 boundary 값
+boundary = content_type.split("=")[1]
 
-    filepath = os.path.join(upload_dir, os.path.basename(fileitem.filename))
+# multipart/form-data 형식의 요청 본문
+request_body = '''
+------Boundary123456789
+Content-Disposition: form-data; name="username"
 
-    with open(filepath, 'wb') as f:
-        while True:
-            chunk = fileitem.file.read(1024)
-            if not chunk:
-                break
-            f.write(chunk)
-    return filepath
+user
+------Boundary123456789
+Content-Disposition: form-data; name="password"
 
-# HTML response 생성하는 함수
-def generate_html_response(message):
-    print("Content-type: text/html\n")
-    print(f"<html><body><h1>{message}</h1></body></html>")
+pass
+------Boundary123456789--
+'''
 
-# 메인 CGI 처리
-if __name__ == "__main__":
-    form = cgi.FieldStorage()
 
-    # 업로드할 파일이 있는지 확인
-    if "fileToUpload" not in form:
-        generate_html_response("파일을 선택해주세요.")
-    else:
-        fileitem = form["fileToUpload"]
+form = cgi.FieldStorage(
+    fp=None,
+    headers={'content-type': content_type,
+						 'content-length': len(request_body)},
+    environ={'REQUEST_METHOD': 'POST'},
+    keep_blank_values=True
+)
 
-        # 파일을 지정된 디렉토리에 저장
-        upload_dir = "/upload/"
-        saved_filepath = save_uploaded_file(fileitem, upload_dir)
-
-        generate_html_response(f"파일 업로드 완료: {saved_filepath}")
+if "username" in form:
+    file_item = form["username"]
+    if file_item.value:
+        file_name = "username"
+        file_path = 'uploads/' + "username"
+        if not os.path.exists('uploads/'):
+                os.makedirs('uploads/')
+        with open(file_path, 'wb') as file:
+            file.write(file_item.value)

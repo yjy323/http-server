@@ -16,6 +16,12 @@
 */
 char* SetEnv(const char*, const char*);
 
+char* SetEnv(const char* key, const char* value) {
+  char* env = new char[std::strlen(key) + std::strlen(value) + 1];
+  std::strcpy(env, key);
+  std::strcat(env, value);
+  return env;
+}
 /*
         멤버함수
 */
@@ -60,6 +66,217 @@ Transaction& Transaction::operator=(const Transaction& obj) {
   return *this;
 }
 
+int Transaction::ParseRequestHeader(std::string buff) {
+  /*
+          HTTP-message = start-line CRLF
+                        *( field-line CRLF )
+                        CRLF
+                        [ message-body ]
+  */
+  const ssize_t SIZE = buff.size();
+  ssize_t offset = 0;
+  std::string line;
+  size_t crlf_pos;
+
+  bool start_line_flag = true;
+
+  while (offset < SIZE) {
+    crlf_pos = buff.find(CRLF);
+    if (crlf_pos == buff.npos) {
+      // CRLF가 존재하지 않는 요청 해더
+      // return status_code_ = HTTP_BAD_REQUEST;
+      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+    }
+
+    line = buff.substr(0, crlf_pos);
+    buff = buff.substr(crlf_pos + 2);
+    offset = line.size() + 2;
+
+    if (start_line_flag && line.empty()) {
+      continue;
+    } else if (start_line_flag) {
+      if (ParseRequestLine(line) == HTTP_BAD_REQUEST) {
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      } else {
+        start_line_flag = false;
+        continue;
+      }
+    } else if (line.empty()) {
+      RETURN_STATUS_CODE HTTP_OK;
+    } else {
+      if (ParseFieldValue(line) == HTTP_BAD_REQUEST) {
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      }
+    }
+  }
+  RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+}
+
+int Transaction::ParseRequestBody(std::string buff, size_t content_length) {
+  std::stringstream ss;
+  size_t offset = 0;
+
+  if (headers_in_.chuncked) {
+    RETURN_STATUS_CODE DecodeChunkedEncoding(buff);
+  } else {
+    for (; offset < content_length; ++offset) {
+      char c = buff[offset];
+      if (!IsOctet(c)) {
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      }
+      ss << c;
+    }
+    this->body_in_ = ss.str();
+    RETURN_STATUS_CODE HTTP_OK;
+  }
+}
+
+const Transaction::Configuration& Transaction::GetConfiguration(
+    const ServerConfiguration& server_config) {
+  typedef std::map<std::string, Configuration>::const_iterator
+      ConfigurationIterator;
+  std::string request_target = uri_.decoded_request_target();
+  size_t request_target_len = request_target.length();
+  size_t max_common_length = 0;
+
+  for (ConfigurationIterator it = server_config.location().begin();
+       it != server_config.location().end(); ++it) {
+    std::string key = it->first;
+    if (request_target.find(key) != request_target.npos) {
+      size_t common_length = 0;
+      size_t min_length = std::min(key.length(), request_target_len);
+      for (size_t i = 0; i < min_length; ++i) {
+        if (key[i] == request_target[i]) {
+          common_length++;
+        } else {
+          break;
+        }
+      }
+      if (common_length > max_common_length) {
+        config_ = it->second;
+        max_common_length = common_length;
+      }
+    }
+  }
+
+  if (max_common_length == 0) {
+    std::set<std::string> default_allowed_method;
+    default_allowed_method.insert("GET");
+
+    config_ = Transaction::Configuration(
+        server_config.error_page(), server_config.client_max_body_size(),
+        server_config.root(), server_config.auto_index(), server_config.index(),
+        default_allowed_method, "", "");
+  }
+  return config_;
+}
+
+int Transaction::HttpProcess() {
+  if (config_.return_uri() != "") {
+    headers_out_.location = "/" + config_.return_uri();
+    RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
+  }
+
+  target_resource_ = "." + config_.root() + uri_.decoded_request_target();
+
+  if (config_.allowed_method().find(method_) ==
+      config_.allowed_method().end()) {
+    SetAllowdMethod();
+    RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
+  }
+
+  if (method_ == HTTP_GET_METHOD) {
+    RETURN_STATUS_CODE HttpGet();
+  }
+
+  if (method_ == HTTP_POST_METHOD) {
+    RETURN_STATUS_CODE HttpPost();
+  }
+
+  if (method_ == HTTP_DELETE_METHOD) {
+    RETURN_STATUS_CODE HttpGet();
+  }
+
+  RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
+}
+
+pid_t Transaction::ExecuteCgi() {
+  SetCgiEnv();
+  int pid = 0;
+  status_code_ = cgi_.ExecuteCgi(target_resource_.c_str(),
+                                 entity_.extension().c_str(), body_in_.c_str());
+  if (status_code_ != HTTP_OK) {
+    pid = -1;
+  } else {
+    pid = cgi_.pid();
+  }
+  return pid;
+}
+
+std::string Transaction::CreateResponseMessage() {
+  /*
+        The "Date" header field represents the date and time at which the
+        message was originated. Section 6.6.1 of [HTTP]
+  */
+
+  response_ = std::string();
+
+  if (cgi_.on()) {
+    SetResponseFromCgi();
+  }
+
+  headers_out_.connection_close = headers_in_.connection_close;
+  headers_out_.date_t = std::time(NULL);
+  headers_out_.date = MakeRfc850Time(headers_out_.date_t);
+
+  AppendStatusLine();
+
+  AppendResponseHeader("Server", headers_out_.server);
+  AppendResponseHeader("Date", headers_out_.date);
+  const int CLASS_OF_RESPONSE = status_code_ / 100;
+  switch (CLASS_OF_RESPONSE) {
+    case HTTP_INFORMATIONAL:
+      break;
+    case HTTP_SUCCESSFUL:
+      AppendResponseHeader("Content-Type", headers_out_.content_type);
+      AppendResponseHeader("Content-Length", headers_out_.content_length);
+      AppendResponseHeader("Last-Modified", headers_out_.last_modified);
+      break;
+    case HTTP_REDIRECTION:
+      AppendResponseHeader("Location", headers_out_.location);
+      break;
+    case HTTP_CLIENT_ERROR:
+    case HTTP_SERVER_ERROR:
+      // ERROR Page
+      SetErrorPage();
+      AppendResponseHeader("Content-Type", headers_out_.content_type);
+      AppendResponseHeader("Content-Length", headers_out_.content_length);
+      headers_out_.connection_close = true;
+      break;
+    default:
+      break;
+  }
+
+  const int STATUS_CODE = status_code_;
+  switch (STATUS_CODE) {
+    case HTTP_NOT_ALLOWED:
+      AppendResponseHeader("Allow", headers_out_.allow);
+      break;
+    default:
+      break;
+  }
+
+  if (headers_out_.connection_close == true) {
+    headers_out_.connection = HTTP_CONNECTION_OPTION_CLOSE;
+  }
+  AppendResponseHeader("Connection", headers_out_.connection);
+  response_ += CRLF;
+  response_ += body_out_;
+
+  std::cout << "[TRANSACTION RESPONSE]\n" << response_;
+  return response_;
+}
+
 /*
         Getter
 */
@@ -68,7 +285,6 @@ const Transaction::Configuration& Transaction::config() const {
 }
 std::string Transaction::method() const { return this->method_; }
 const Uri& Transaction::uri() const { return this->uri_; }
-Uri& Transaction::uri() { return this->uri_; }
 const HeadersIn& Transaction::headers_in() const { return this->headers_in_; }
 std::string Transaction::body_in() const { return this->body_in_; }
 std::string Transaction::http_version() const { return this->http_version_; }
@@ -88,10 +304,19 @@ Entity& Transaction::entity() { return this->entity_; }
 const Cgi& Transaction::cgi() const { return this->cgi_; }
 std::string Transaction::response() const { return this->response_; }
 
+Uri& Transaction::uri_instance() { return this->uri_; }
+Cgi& Transaction::cgi_instance() { return this->cgi_; }
+
+/*
+        Setter
+*/
 void Transaction::set_status_code(const int& status_code) {
   this->status_code_ = status_code;
 }
 
+/*
+        Private methods
+*/
 int Transaction::ParseRequestLine(std::string& request_line) {
   std::vector<std::string> request_line_component = Split(request_line, ' ');
   if (request_line_component.size() != 3) {
@@ -172,79 +397,9 @@ int Transaction::ParseFieldValue(std::string& field_line) {
 
   RETURN_STATUS_CODE HTTP_OK;
 }
-/*
-        int Transaction::DecodeChunkedEncoding(char* buff, ssize_t size,
-   ssize_t& offset)
-        {}
-*/
-
-int Transaction::ParseRequestHeader(std::string buff) {
-  /*
-          HTTP-message = start-line CRLF
-                        *( field-line CRLF )
-                        CRLF
-                        [ message-body ]
-  */
-  static const ssize_t SIZE = buff.size();
-  ssize_t offset = 0;
-  std::string line;
-  size_t crlf_pos;
-
-  bool start_line_flag = true;
-
-  while (offset < SIZE) {
-    crlf_pos = buff.find(CRLF);
-    if (crlf_pos == buff.npos) {
-      // CRLF가 존재하지 않는 요청 해더
-      // return status_code_ = HTTP_BAD_REQUEST;
-      RETURN_STATUS_CODE HTTP_BAD_REQUEST;
-    }
-
-    line = buff.substr(0, crlf_pos);
-    buff = buff.substr(crlf_pos + 2);
-    offset = line.size() + 2;
-
-    if (start_line_flag && line.empty()) {
-      continue;
-    } else if (start_line_flag) {
-      if (ParseRequestLine(line) == HTTP_BAD_REQUEST) {
-        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
-      } else {
-        start_line_flag = false;
-        continue;
-      }
-    } else if (line.empty()) {
-      RETURN_STATUS_CODE HTTP_OK;
-    } else {
-      if (ParseFieldValue(line) == HTTP_BAD_REQUEST) {
-        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
-      }
-    }
-  }
-  RETURN_STATUS_CODE HTTP_BAD_REQUEST;
-}
-
-int Transaction::ParseRequestBody(std::string buff, size_t content_length) {
-  std::stringstream ss;
-  size_t offset = 0;
-
-  if (headers_in_.chuncked) {
-    RETURN_STATUS_CODE DecodeChunkedEncoding(buff);
-  } else {
-    for (; offset < content_length; ++offset) {
-      char c = buff[offset];
-      if (!IsOctet(c)) {
-        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
-      }
-      ss << c;
-    }
-    this->body_in_ = ss.str();
-    RETURN_STATUS_CODE HTTP_OK;
-  }
-}
 
 int Transaction::DecodeChunkedEncoding(std::string buff) {
-  static const size_t SIZE = buff.size();
+  const size_t SIZE = buff.size();
   size_t offset = 0;
 
   while (offset < SIZE) {
@@ -275,7 +430,7 @@ int Transaction::DecodeChunkedEncoding(std::string buff) {
     std::string contents =
         buff.substr(hex_end + std::strlen(CRLF),
                     contents_end - hex_end - std::strlen(CRLF));
-    if (contents.length() != (size_t)strtol(hex_str.c_str(), NULL, 16)) {
+    if (contents.length() != (size_t)std::strtol(hex_str.c_str(), NULL, 16)) {
       RETURN_STATUS_CODE HTTP_BAD_REQUEST;
     }
 
@@ -286,63 +441,6 @@ int Transaction::DecodeChunkedEncoding(std::string buff) {
   headers_in_.content_length_n = body_in_.length();
   headers_in_.content_length = std::to_string(headers_in_.content_length_n);
   RETURN_STATUS_CODE HTTP_OK;
-}
-
-const Transaction::Configuration& Transaction::GetConfiguration(
-    const ServerConfiguration& server_config) {
-  typedef std::map<std::string, Configuration>::const_iterator
-      ConfigurationIterator;
-  std::string request_target = uri_.decoded_request_target();
-  size_t request_target_len = request_target.length();
-  size_t max_common_length = 0;
-
-  for (ConfigurationIterator it = server_config.location().begin();
-       it != server_config.location().end(); ++it) {
-    std::string key = it->first;
-    if (request_target.find(key) != request_target.npos) {
-      size_t common_length = 0;
-      size_t min_length = std::min(key.length(), request_target_len);
-      for (size_t i = 0; i < min_length; ++i) {
-        if (key[i] == request_target[i]) {
-          common_length++;
-        } else {
-          break;
-        }
-      }
-      if (common_length > max_common_length) {
-        config_ = it->second;
-        max_common_length = common_length;
-      }
-    }
-  }
-
-  if (max_common_length == 0) {
-    std::set<std::string> default_allowed_method;
-    default_allowed_method.insert("GET");
-
-    config_ = Transaction::Configuration(
-        server_config.error_page(), server_config.client_max_body_size(),
-        server_config.root(), server_config.auto_index(), server_config.index(),
-        default_allowed_method, "", "");
-  }
-  return config_;
-}
-
-void Transaction::SetAllowdMethod() {
-  typedef std::set<std::string>::const_iterator METHOD_ITER;
-  size_t method_cnt = config_.allowed_method().size();
-  METHOD_ITER method = config_.allowed_method().begin();
-  headers_out_.allow = "";
-  for (size_t i = 0; i < method_cnt; ++i) {
-    headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
-  }
-}
-
-void Transaction::SetEntityHeaders() {
-  body_out_ = entity_.body();
-  headers_out_.content_type = entity_.mime_type();
-  headers_out_.content_length = entity_.length();
-  headers_out_.last_modified = entity_.modified_s();
 }
 
 int Transaction::HttpGet() {
@@ -357,7 +455,7 @@ int Transaction::HttpGet() {
     } else if (config_.auto_index()) {
       entity_.CreateDirectoryListingPage(target_resource_.c_str(),
                                          uri_.decoded_request_target().c_str());
-      SetEntityHeaders();
+      SetResponseFromEntity();
       RETURN_STATUS_CODE HTTP_OK;
     } else {
       RETURN_STATUS_CODE HTTP_FORBIDDEN;
@@ -372,7 +470,7 @@ int Transaction::HttpGet() {
   } else {
     if (Entity::IsFileReadable(target_resource_.c_str())) {
       entity_.ReadFile(target_resource_.c_str());
-      SetEntityHeaders();
+      SetResponseFromEntity();
       RETURN_STATUS_CODE HTTP_OK;
     } else {
       RETURN_STATUS_CODE HTTP_FORBIDDEN;
@@ -406,7 +504,7 @@ int Transaction::HttpDelete() {
   }
 
   entity_.ReadFile(target_resource_.c_str());
-  SetEntityHeaders();
+  SetResponseFromEntity();
   if (std::remove(this->target_resource_.c_str()) != 0) {
     RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
   }
@@ -414,43 +512,26 @@ int Transaction::HttpDelete() {
   RETURN_STATUS_CODE HTTP_OK;
 }
 
-char* SetEnv(const char* key, const char* value) {
-  char* env = new char[std::strlen(key) + std::strlen(value) + 1];
-  std::strcpy(env, key);
-  std::strcat(env, value);
-  return (char* const)env;
-}
-
-int Transaction::HttpProcess() {
-  if (config_.return_uri() != "") {
-    headers_out_.location = "/" + config_.return_uri();
-    RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
-  }
-
-  target_resource_ = "." + config_.root() + uri_.decoded_request_target();
-
-  if (config_.allowed_method().find(method_) ==
-      config_.allowed_method().end()) {
-    SetAllowdMethod();
-    RETURN_STATUS_CODE HTTP_NOT_ALLOWED;
-  }
-
-  if (method_ == HTTP_GET_METHOD) {
-    RETURN_STATUS_CODE HttpGet();
-  }
-
-  if (method_ == HTTP_POST_METHOD) {
-    RETURN_STATUS_CODE HttpPost();
-  }
-
-  if (method_ == HTTP_DELETE_METHOD) {
-    RETURN_STATUS_CODE HttpGet();
-  }
-
-  RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
-}
-
 void Transaction::SetCgiEnv() {
+  /*
+                cgi_.envp().push_back(SetEnv("AUTH_TYPE=", ""));
+                cgi_.envp().push_back(SetEnv("CONTENT_LENGTH=", ""));
+                cgi_.envp().push_back(SetEnv("CONTENT_TYPE=", ""));
+                cgi_.envp().push_back(SetEnv("GATEWAY_INTERFACE=", ""));
+                cgi_.envp().push_back(SetEnv("PATH_INFO=", ""));
+                cgi_.envp().push_back(SetEnv("PATH_TRANSLATED=", ""));
+                cgi_.envp().push_back(SetEnv("QUERY_STRING=", ""));
+                cgi_.envp().push_back(SetEnv("REMOTE_ADDR=", ""));
+                cgi_.envp().push_back(SetEnv("REMOTE_HOST=", ""));
+                cgi_.envp().push_back(SetEnv("REMOTE_IDENT=", ""));
+                cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", ""));
+                cgi_.envp().push_back(SetEnv("SCRIPT_NAME=", ""));
+                cgi_.envp().push_back(SetEnv("SERVER_NAME=", ""));
+                cgi_.envp().push_back(SetEnv("SERVER_PORT=", ""));
+                cgi_.envp().push_back(SetEnv("SERVER_PROTOCOL=", ""));
+                cgi_.envp().push_back(SetEnv("SERVER_SOFTWARE=", ""));
+  */
+
   if (method_ == HTTP_GET_METHOD) {
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "GET"));
     cgi_.envp().push_back(SetEnv("QUERY_STRING=", uri_.query_string().c_str()));
@@ -462,33 +543,18 @@ void Transaction::SetCgiEnv() {
   }
 }
 
-pid_t Transaction::ExecuteCgi() {
-  SetCgiEnv();
-  int pid = 0;
-  status_code_ = cgi_.ExecuteCgi(target_resource_.c_str(),
-                                 entity_.extension().c_str(), body_in_.c_str());
-  if (status_code_ != HTTP_OK) {
-    pid = -1;
-  } else {
-    pid = cgi_.pid();
+void Transaction::SetAllowdMethod() {
+  typedef std::set<std::string>::const_iterator METHOD_ITER;
+  size_t method_cnt = config_.allowed_method().size();
+  METHOD_ITER method = config_.allowed_method().begin();
+  headers_out_.allow = "";
+  for (size_t i = 0; i < method_cnt; ++i) {
+    headers_out_.allow += *(method++) + (i < method_cnt - 1 ? ", " : "");
   }
-  return pid;
-}
-
-std::string Transaction::AppendStatusLine() {
-  return response_ += http_version_ + " " + std::to_string(status_code_) + " " +
-                      HttpGetReasonPhase(status_code_) + CRLF;
-}
-std::string Transaction::AppendResponseHeader(const std::string key,
-                                              const std::string value) {
-  if (value == "") {
-    return "";
-  }
-  return response_ += key + ": " + value + CRLF;
 }
 
 void Transaction::SetErrorPage() {
-  static const std::string ERROR_PAGE_PATH =
+  const std::string ERROR_PAGE_PATH =
       "." + config_.root() + "/" + config_.error_page();
 
   if (config_.error_page() != "" &&
@@ -502,60 +568,64 @@ void Transaction::SetErrorPage() {
     entity_.CreatePage(std::to_string(status_code_) + " " +
                        HttpGetReasonPhase(status_code_));
   }
-  SetEntityHeaders();
+  SetResponseFromEntity();
 }
 
-std::string Transaction::CreateResponseMessage() {
-  /*
-        The "Date" header field represents the date and time at which the
-        message was originated. Section 6.6.1 of [HTTP]
-  */
-  headers_out_.connection_close = headers_in_.connection_close;
-  headers_out_.date_t = std::time(NULL);
-  headers_out_.date = MakeRfc850Time(headers_out_.date_t);
+void Transaction::SetResponseFromEntity() {
+  body_out_ = entity_.body();
+  headers_out_.content_type = entity_.mime_type();
+  headers_out_.content_length = entity_.length();
+  headers_out_.last_modified = entity_.modified_s();
+}
 
-  AppendStatusLine();
+void Transaction::SetResponseFromCgi() {
+  typedef std::vector<std::string>::const_iterator Iterator;
+  const std::string DUPLICATED_NL = "\n\n";
+  std::string header;
+  std::string body;
+  size_t pos = 0;
 
-  AppendResponseHeader("Server", headers_out_.server);
-  AppendResponseHeader("Date", headers_out_.date);
-  static const int CLASS_OF_RESPONSE = status_code_ / 100;
-  switch (CLASS_OF_RESPONSE) {
-    case HTTP_INFORMATIONAL:
-      break;
-    case HTTP_SUCCESSFUL:
-      AppendResponseHeader("Content-Type", headers_out_.content_type);
-      AppendResponseHeader("Content-Length", headers_out_.content_length);
-      AppendResponseHeader("Last-Modified", headers_out_.last_modified);
-      break;
-    case HTTP_REDIRECTION:
-      AppendResponseHeader("Location", headers_out_.location);
-      break;
-    case HTTP_CLIENT_ERROR:
-    case HTTP_SERVER_ERROR:
-      // ERROR Page
-      SetErrorPage();
-      AppendResponseHeader("Content-Type", headers_out_.content_type);
-      AppendResponseHeader("Content-Length", headers_out_.content_length);
-      headers_out_.connection_close = true;
-      break;
-    default:
-      break;
+  pos = cgi_.response().find(DUPLICATED_NL);
+  if (pos == cgi_.response().npos) {
+    status_code_ = HTTP_BAD_GATEWAY;
+  } else {
+    header = cgi_.response().substr(0, pos);
+    body = cgi_.response().substr(pos + DUPLICATED_NL.length());
+    std::vector<std::string> headers = Split(header, '\n');
+    for (Iterator it = headers.begin(); it != headers.end(); ++it) {
+      pos = (*it).find(':');
+      if (pos == (*it).npos) {
+        continue;
+      }
+      std::string field = ToCaseInsensitive((*it).substr(0, pos));
+      std::string value = Trim((*it).substr(pos + 1));
+      if (field == "content-type") {
+        CgiContentType(cgi_.headers_instance(), value);
+      } else if (field == "location") {
+        CgiLocation(cgi_.headers_instance(), value);
+      } else if (field == "status") {
+        CgiStatus(cgi_.headers_instance(), value);
+      }
+    }
+
+    headers_out_.content_type = cgi_.headers().content_type;
+    headers_out_.location = cgi_.headers().location;
+    status_code_ = cgi_.headers().status_code;
+    body_out_ = body;
+    headers_out_.content_length_n = body_out_.length();
+    headers_out_.content_length = std::to_string(headers_out_.content_length_n);
   }
+}
 
-  static const int STATUS_CODE = status_code_;
-  switch (STATUS_CODE) {
-    case HTTP_NOT_ALLOWED:
-      AppendResponseHeader("Allow", headers_out_.allow);
-      break;
-    default:
-      break;
-  }
+std::string Transaction::AppendStatusLine() {
+  return response_ += http_version_ + " " + std::to_string(status_code_) + " " +
+                      HttpGetReasonPhase(status_code_) + CRLF;
+}
 
-  if (headers_out_.connection_close == true) {
-    headers_out_.connection = HTTP_CONNECTION_OPTION_CLOSE;
+std::string Transaction::AppendResponseHeader(const std::string key,
+                                              const std::string value) {
+  if (value == "") {
+    return "";
   }
-  AppendResponseHeader("Connection", headers_out_.connection);
-  response_ += CRLF;
-  response_ += body_out_;
-  return response_;
+  return response_ += key + ": " + value + CRLF;
 }
