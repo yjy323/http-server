@@ -210,13 +210,18 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
   std::cout << client.response() << std::endl;
   std::cout << "[Response Message End]" << std::endl;
 
-  if (client.SendResponseMessage() == -1 ||
-      this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
-                    KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
-    DisconnetClient(client);
+  if (client.SendResponseMessage() == -1) {
+    return (void)DisconnetClient(client);
   }
 
   std::cout << "Response Message Send Success." << std::endl;
+
+  if (!client.transaction().headers_out().connection_close) {
+    if (this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
+                      KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
+      return (void)DisconnetClient(client);
+    }
+  }
 
   client.ResetClientInfo();
 }
