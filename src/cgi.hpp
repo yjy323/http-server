@@ -25,10 +25,10 @@ class Cgi {
   int ExecuteCgi(const char*, const char*, const char*);
   bool TurnOn();
 
-  const std::vector<char* const>& argv() const;
-  const std::vector<char* const>& envp() const;
-  std::vector<char* const>& argv();
-  std::vector<char* const>& envp();
+  const std::vector<char*>& argv() const;
+  const std::vector<char*>& envp() const;
+  std::vector<char*>& argv();
+  std::vector<char*>& envp();
   const int* cgi2server_fd() const;
   const int* server2cgi_fd() const;
   pid_t pid() const;
@@ -41,8 +41,8 @@ class Cgi {
   bool IsCgiProgram(const char*);
   bool IsCgiScript(const char*);
 
-  std::vector<char* const> argv_;
-  std::vector<char* const> envp_;
+  std::vector<char*> argv_;
+  std::vector<char*> envp_;
   int cgi2server_fd_[2];
   int server2cgi_fd_[2];
   pid_t pid_;

@@ -275,7 +275,7 @@ int Transaction::DecodeChunkedEncoding(std::string buff) {
     std::string contents =
         buff.substr(hex_end + std::strlen(CRLF),
                     contents_end - hex_end - std::strlen(CRLF));
-    if (contents.length() != (size_t)strtol(hex_str.c_str(), NULL, 16)) {
+    if (contents.length() != (size_t)std::strtol(hex_str.c_str(), NULL, 16)) {
       RETURN_STATUS_CODE HTTP_BAD_REQUEST;
     }
 
@@ -418,7 +418,7 @@ char* SetEnv(const char* key, const char* value) {
   char* env = new char[std::strlen(key) + std::strlen(value) + 1];
   std::strcpy(env, key);
   std::strcat(env, value);
-  return (char* const)env;
+  return env;
 }
 
 int Transaction::HttpProcess() {
@@ -463,7 +463,7 @@ void Transaction::SetCgiEnv() {
 }
 
 void Transaction::FreeCgiEnv() {
-  typedef std::vector<char* const>::const_iterator ConstIterator;
+  typedef std::vector<char*>::const_iterator ConstIterator;
   for (ConstIterator it = cgi_.envp().begin(); it != cgi_.envp().end(); ++it) {
     delete *it;
   }
@@ -518,6 +518,8 @@ std::string Transaction::CreateResponseMessage() {
         The "Date" header field represents the date and time at which the
         message was originated. Section 6.6.1 of [HTTP]
   */
+  response_ = std::string();
+
   headers_out_.connection_close = headers_in_.connection_close;
   headers_out_.date_t = std::time(NULL);
   headers_out_.date = MakeRfc850Time(headers_out_.date_t);

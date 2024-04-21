@@ -4,8 +4,8 @@
 #define PY_FILE ".py\0"
 
 Cgi::Cgi()
-    : argv_(std::vector<char* const>()),
-      envp_(std::vector<char* const>()),
+    : argv_(std::vector<char*>()),
+      envp_(std::vector<char*>()),
       cgi2server_fd_(),
       server2cgi_fd_(),
       pid_(0),
@@ -19,10 +19,10 @@ Cgi& Cgi::operator=(const Cgi& obj) {
   return *this;
 }
 
-const std::vector<char* const>& Cgi::argv() const { return this->argv_; }
-const std::vector<char* const>& Cgi::envp() const { return this->envp_; }
-std::vector<char* const>& Cgi::argv() { return this->argv_; }
-std::vector<char* const>& Cgi::envp() { return this->envp_; }
+const std::vector<char*>& Cgi::argv() const { return this->argv_; }
+const std::vector<char*>& Cgi::envp() const { return this->envp_; }
+std::vector<char*>& Cgi::argv() { return this->argv_; }
+std::vector<char*>& Cgi::envp() { return this->envp_; }
 
 const int* Cgi::cgi2server_fd() const { return this->cgi2server_fd_; }
 const int* Cgi::server2cgi_fd() const { return this->server2cgi_fd_; }
@@ -61,13 +61,12 @@ bool Cgi::IsCgiScript(const char* extension) {
 
 pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
                       const char* form_data) {
-  std::ifstream ifs(path);
-
   if (IsCgiProgram(extension)) {
     argv_.push_back(const_cast<char*>(path));
     argv_.push_back(NULL);
 
   } else if (IsCgiScript(extension)) {
+    std::ifstream ifs(path);
     std::string buffer;
     std::getline(ifs, buffer, '\n');
     if (buffer.size() < 2 || buffer.find("#!") != 0) {

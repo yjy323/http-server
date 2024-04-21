@@ -1,6 +1,7 @@
 #ifndef HTTP_HPP
 #define HTTP_HPP
 
+#include <cstdlib>
 #include <ctime>
 #include <list>
 #include <map>
