@@ -34,8 +34,8 @@ void Client::ResetClientInfo() {
 
 ssize_t Client::ReceiveRequest() {
   char buffer[BUFFER_SIZE];
-  ssize_t bytes_read = recv(Socket::fd(), buffer, sizeof(buffer) - 1, 0);
-  if (bytes_read == -1) return 0;
+  ssize_t bytes_read = recv(Socket::fd(), buffer, BUFFER_SIZE - 1, 0);
+  if (bytes_read == -1) return bytes_read;
 
   buffer[BUFFER_SIZE - 1] = 0;
   request_ += buffer;
