@@ -6,114 +6,89 @@
 
 #include "stdlib.h"
 
-#define INIT_ERROR_MESSAGE "EventHandler 초기화 중 error 발생"
-#define POLLING_ERROR_MESSAGE "event Polling 중 error 발생"
-
-#define POLLING_TIMEOUT_MESSAGE "event Polling timeout"
-
 EventHandler::EventHandler()
-    : kq_(-1), events_(0), event_size_(-1), registed_event_() {}
+    : kq_(-1), events_(0), added_event_(AddedEvent()) {}
 
 EventHandler::~EventHandler() {
-  if (this->kq_ != -1) close(this->kq_);
-  if (this->events_ != 0) delete[] this->events_;
+  if (kq_ != -1) close(kq_);
+  if (events_ != 0) delete[] events_;
 }
 
 int EventHandler::Init(int event_size) {
-  if (this->kq_ == -1) this->kq_ = kqueue();
-  if (this->events_ == 0) this->events_ = new struct kevent[event_size];
-  this->event_size_ = event_size;
-  this->registed_event_.clear();
-
-  if (this->kq_ == -1 || this->events_ == 0) {
-    std::cerr << INIT_ERROR_MESSAGE << std::endl;
-    return ERROR;
+  if (kq_ != -1) {
+    close(kq_);
+    kq_ = -1;
   }
+  if (events_ != 0) {
+    delete[] events_;
+    events_ = 0;
+  }
+
+  if ((kq_ = kqueue()) == -1) return ERROR;
+  if ((events_ = new Event[event_size]) == 0) return ERROR;
 
   return OK;
 }
 
 int EventHandler::Polling(int& nev, long timeout_sec) {
-  struct timespec timeout;
+  if (events_ == 0) return ERROR;
 
+  std::size_t event_size = sizeof(events_) / sizeof(events_);
+
+  struct timespec timeout;
   timeout.tv_sec = timeout_sec;
   timeout.tv_nsec = 0;
 
-  nev = kevent(this->kq_, NULL, 0, this->events_, this->event_size_, &timeout);
-  if (nev == -1) {
-    std::cerr << POLLING_ERROR_MESSAGE << std::endl;
+  nev = kevent(kq_, NULL, 0, events_, event_size, &timeout);
 
-    return ERROR;
-  } else if (nev == 0) {
-    std::clog << POLLING_TIMEOUT_MESSAGE << std::endl;
-
-    return ERROR;
-  }
-
-  std::clog << nev << "개의 event catch!" << std::endl;
-
+  if (nev == -1) return ERROR;
   return OK;
 }
 
-int EventHandler::Regist(int ident, int16_t filter, uint64_t flags,
-                         uint32_t fflags, int64_t data, void* udata) {
-  struct kevent event;
+int EventHandler::Add(int ident, int16_t filter, uint64_t flags,
+                      uint32_t fflags, int64_t data, void* udata) {
+  Event event;
 
   EV_SET(&event, ident, filter, EV_ADD | flags, fflags, data, udata);
-  if (kevent(this->kq_, &event, 1, NULL, 0, NULL) == -1) {
-    std::cerr << "event 등록 실패 { ";
-    std::cerr << "ident: " << ident << ", ";
-    std::cerr << "filter: " << filter << ", ";
-    std::cerr << " }" << std::endl;
-
+  if (kevent(kq_, &event, 1, NULL, 0, NULL) == -1) {
     return ERROR;
   }
 
-  if (this->registed_event_.find(ident) == this->registed_event_.end())
-    this->registed_event_[ident] = std::set<int>();
-  this->registed_event_[ident].insert(filter);
+  if (added_event_.find(ident) == added_event_.end())
+    added_event_[ident] = std::set<Event>();
+  added_event_[ident].insert(event);
 
   return OK;
 }
 
-int EventHandler::Delete(int ident, int16_t filter) {
-  struct kevent event;
-
-  std::map<int, std::set<int> >::iterator it_registed_event =
-      this->registed_event_.find(ident);
-  if (it_registed_event == this->registed_event_.end()) return ERROR;
-
-  std::set<int>& registed_filter = it_registed_event->second;
-  if (registed_filter.find(filter) == registed_filter.end()) return ERROR;
-
-  EV_SET(&event, ident, filter, EV_DELETE, 0, 0, 0);
-  kevent(this->kq_, &event, 1, NULL, 0, NULL);
-
-  registed_filter.erase(filter);
-  if (registed_filter.size() == 0) {
-    this->registed_event_.erase(ident);
+int EventHandler::AddWithTimer(int ident, int16_t filter, uint64_t flags,
+                               uint32_t fflags, int64_t data, void* udata,
+                               int time_sec) {
+  if (this->Add(ident, filter, flags, fflags, data, udata) == -1 ||
+      this->Add(ident, EVFILT_TIMER, EV_ONESHOT, 0, time_sec * 1000, udata) ==
+          -1) {
+    return ERROR;
   }
 
   return OK;
 }
 
-int EventHandler::DeleteAll(int ident) {
-  struct kevent event;
-
-  std::map<int, std::set<int> >::iterator it_registed_event =
-      this->registed_event_.find(ident);
-  if (it_registed_event == this->registed_event_.end()) return ERROR;
-
-  std::set<int>& registed_filter = it_registed_event->second;
-  for (std::set<int>::iterator it_registed_filter = registed_filter.begin();
-       it_registed_filter != registed_filter.end(); it_registed_filter++) {
-    EV_SET(&event, ident, *it_registed_filter, EV_DELETE, 0, 0, 0);
-    kevent(this->kq_, &event, 1, NULL, 0, NULL);
-  }
-
-  this->registed_event_.erase(ident);
+int EventHandler::Delete(int ident) {
+  added_event_.erase(ident);
 
   return OK;
 }
 
-struct kevent* EventHandler::events() const { return this->events_; }
+const struct kevent* EventHandler::events() const { return events_; }
+struct kevent* EventHandler::events() { return events_; }
+
+bool operator<(const Event& lhs, const Event& rhs) {
+  if (lhs.ident != rhs.ident) {
+    return lhs.ident < rhs.ident;
+  }
+  return lhs.filter < rhs.filter;
+}
+
+bool operator==(const Event& lhs, const Event& rhs) {
+  return (lhs.ident == rhs.ident && lhs.filter == rhs.filter);
+}

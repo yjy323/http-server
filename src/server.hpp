@@ -6,38 +6,34 @@
 #include <vector>
 
 #include "configuration.hpp"
+#include "socket.hpp"
 
-class Server {
+class Server : public Socket {
  public:
-  Server();
+  typedef ServerConfiguration Configuration;
+  typedef std::vector<Configuration> Configurations;
+
+  Server(const Info& info, const Configurations& conf_);
   Server(const Server& ref);
 
   virtual ~Server();
 
   Server& operator=(const Server& ref);
-
-  void AddConf(const ServerConfiguration& conf);
-  void InitAddr();
-
-  // for socket
-  int Open();
   int Bind();
-  int Listen(int backlog);
-  int Close();
-  int SetReusable();
+  int Accept();
+  Configuration ConfByHost(const std::string& host) const;
 
-  ServerConfiguration ConfByHost(const std::string& host) const;
+  const Configurations& config() const;
+  const int& port() const;
+  const bool& reusable() const;
 
-  std::vector<ServerConfiguration> conf() const;
-  int fd() const;
-  int port() const;
-  struct sockaddr_in addr() const;
+ protected:
+  Server();
 
  private:
-  std::vector<ServerConfiguration> conf_;
-  int fd_;
+  Configurations config_;
   int port_;
-  struct sockaddr_in addr_;
+  bool reusable_;
 };
 
 #endif

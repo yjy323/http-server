@@ -11,6 +11,7 @@
 #define ARG_ERROR_MESSAGE "please check argument"
 
 int parseConfig(const char* fileName, Configuration& configuration);
+void leak_test();
 
 int main(const int argc, const char* argv[]) {
   Configuration configuration;
@@ -23,11 +24,15 @@ int main(const int argc, const char* argv[]) {
     std::cerr << ARG_ERROR_MESSAGE << std::endl;
     return ERROR;
   }
+  // atexit(leak_test);
 
   Multiplexer multiplexer;
 
-  if (multiplexer.Init(configuration) == ERROR) return ERROR;
-  return multiplexer.Multiplexing();
+  if (multiplexer.Init(configuration) == ERROR ||
+      multiplexer.StartServers() == ERROR)
+    return ERROR;
+
+  return multiplexer.OpenServers();
 }
 
 int parseConfig(const char* fileName, Configuration& configuration) {
@@ -43,3 +48,5 @@ int parseConfig(const char* fileName, Configuration& configuration) {
 
   return OK;
 }
+
+void leak_test() { system("leaks webserv"); }

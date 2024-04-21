@@ -55,7 +55,7 @@ Transaction& Transaction::operator=(const Transaction& obj) {
     this->body_out_ = obj.body_out_;
     this->entity_ = obj.entity_;
     this->response_ = obj.response_;
-    // this->cgi_ = obj.cgi;
+    this->cgi_ = obj.cgi_;
   }
   return *this;
 }
@@ -462,13 +462,6 @@ void Transaction::SetCgiEnv() {
   }
 }
 
-void Transaction::FreeCgiEnv() {
-  typedef std::vector<char*>::const_iterator ConstIterator;
-  for (ConstIterator it = cgi_.envp().begin(); it != cgi_.envp().end(); ++it) {
-    delete *it;
-  }
-}
-
 pid_t Transaction::ExecuteCgi() {
   SetCgiEnv();
   int pid = 0;
@@ -479,7 +472,6 @@ pid_t Transaction::ExecuteCgi() {
   } else {
     pid = cgi_.pid();
   }
-  FreeCgiEnv();
   return pid;
 }
 

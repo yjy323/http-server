@@ -9,20 +9,22 @@ SRC_DIR = src
 OBJ_DIR = obj
 
 SRCS = $(addprefix src/, main.cpp \
-												configuration_parser.cpp \
-												multiplexer.cpp \
-												event_handler.cpp \
-												file_reader.cpp \
-												configuration.cpp \
-												server.cpp \
-												client.cpp \
-												abnf.cpp \
-												uri.cpp \
-												transaction.cpp \
-												entity.cpp \
-												http.cpp \
-												cgi.cpp \
-												utils.cpp)
+													multiplexer.cpp \
+													configuration_parser.cpp \
+													event_handler.cpp \
+													file_reader.cpp \
+													configuration.cpp \
+													transaction.cpp \
+													server.cpp \
+													client.cpp \
+													socket.cpp \
+													entity.cpp \
+													uri.cpp \
+													cgi.cpp \
+													http.cpp \
+													abnf.cpp \
+													utils.cpp)
+
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRCS))
 
 all: $(OBJ_DIR) $(NAME)

@@ -5,105 +5,53 @@
 #include "core.hpp"
 #include "utils.hpp"
 
-#define NEW_SOCKET_FAIL_MESSAGE std::string("socket() failed.")
-#define BIND_FAIL_MASSAGE std::string("bind() to 0.0.0.0:`port` failed.")
-#define LISTEN_FAIL_MASSAGE std::string("listen() to 0.0.0.0:`port` failed.")
-#define SETSOCKOPT_FAIL_MASSAGE std::string("setsockopt() failed.")
+Server::Server() : Socket(), config_(), port_(-1), reusable_(false) {}
 
-Server::Server() {}
+Server::Server(const Info& info, const Server::Configurations& conf)
+    : Socket(info), config_(conf), port_(conf[0].port()), reusable_(false) {}
 
 Server::Server(const Server& ref)
-    : conf_(ref.conf()), fd_(ref.fd()), port_(ref.port()), addr_(ref.addr()) {}
+    : Socket(ref),
+      config_(ref.config()),
+      port_(ref.port()),
+      reusable_(ref.reusable()) {}
 
 Server::~Server() {}
 
 Server& Server::operator=(const Server& ref) {
   if (this == &ref) return *this;
 
-  this->conf_ = ref.conf();
-  this->fd_ = ref.fd();
-  this->addr_ = ref.addr();
+  Socket::operator=(ref);
+  this->config_ = ref.config();
+  this->reusable_ = ref.reusable();
 
   return *this;
 }
 
 /* method */
 
-void Server::AddConf(const ServerConfiguration& conf) {
-  this->conf_.push_back(conf);
-
-  if (this->conf_.size() == 1) {
-    this->port_ = this->conf_[0].port();
-    InitAddr();
-  }
-}
-
-int Server::Open() {
-  if ((this->fd_ = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-    std::cerr << NEW_SOCKET_FAIL_MESSAGE << std::endl;
-
-    return ERROR;
-  }
-
-  return OK;
-}
-
 int Server::Bind() {
-  int sockfd = this->fd_;
-  const sockaddr* addr = (struct sockaddr*)(&this->addr_);
-  socklen_t addrlen = sizeof(this->addr_);
+  struct sockaddr_in addr;
 
-  if (bind(sockfd, addr, addrlen) == -1) {
-    std::stringstream ss;
-    ss << this->port_;
+  Memset(&(addr), 0, sizeof(addr));
 
-    std::cerr << BIND_FAIL_MASSAGE.replace(BIND_FAIL_MASSAGE.find("`port`"),
-                                           std::string("`port`").length(),
-                                           ss.str())
-              << std::endl;
+  addr.sin_family = this->info().domain;
+  addr.sin_addr.s_addr = INADDR_ANY;
+  addr.sin_port = htons(port_);
 
-    return ERROR;
-  }
-
-  return OK;
+  return Socket::Bind((struct sockaddr*)&addr);
 }
 
-int Server::Listen(int backlog) {
-  int sockfd = this->fd_;
+int Server::Accept() {
+  struct sockaddr client_addr;
+  socklen_t client_addr_len = sizeof(client_addr);
 
-  if (listen(sockfd, backlog) == -1) {
-    std::stringstream ss;
-    ss << this->port_;
-
-    std::cerr << LISTEN_FAIL_MASSAGE.replace(LISTEN_FAIL_MASSAGE.find("`port`"),
-                                             std::string("`port`").length(),
-                                             ss.str())
-              << std::endl;
-
-    return ERROR;
-  }
-
-  return OK;
-}
-
-int Server::Close() { return close(this->fd_); }
-
-int Server::SetReusable() {
-  int isreusable = 1;
-
-  if (setsockopt(this->fd_, SOL_SOCKET, SO_REUSEADDR, &isreusable,
-                 sizeof(isreusable)) == -1) {
-    std::cerr << SETSOCKOPT_FAIL_MASSAGE << std::endl;
-
-    return ERROR;
-  }
-  return OK;
+  return accept(Socket::fd(), &client_addr, &client_addr_len);
 }
 
 ServerConfiguration Server::ConfByHost(const std::string& host) const {
-  for (std::vector<ServerConfiguration>::const_iterator it =
-           this->conf_.begin();
-       it != this->conf_.end(); it++) {
+  for (Server::Configurations::const_iterator it = this->config_.begin();
+       it != this->config_.end(); it++) {
     for (std::set<std::string>::iterator it_server_host =
              it->server_names().begin();
          it_server_host != it->server_names().end(); it_server_host++) {
@@ -113,23 +61,11 @@ ServerConfiguration Server::ConfByHost(const std::string& host) const {
     }
   }
 
-  return this->conf_[0];
-}
-
-void Server::InitAddr() {
-  Memset(&(this->addr_), 0, sizeof(this->addr_));
-
-  this->addr_.sin_family = AF_INET;
-  this->addr_.sin_addr.s_addr = INADDR_ANY;
-  this->addr_.sin_port = htons(this->port_);
+  return this->config_[0];
 }
 
 /* getter */
 
-std::vector<ServerConfiguration> Server::conf() const { return this->conf_; }
-
-int Server::fd() const { return this->fd_; }
-
-int Server::port() const { return this->port_; }
-
-struct sockaddr_in Server::addr() const { return this->addr_; }
+const Server::Configurations& Server::config() const { return this->config_; }
+const int& Server::port() const { return this->port_; }
+const bool& Server::reusable() const { return this->reusable_; }
