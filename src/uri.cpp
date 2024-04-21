@@ -6,8 +6,8 @@
         uri.cpp에 사용되는 비멤버 함수
 */
 
-static int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
-                             std::string& uri_component, std::string delimiter);
+int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
+                      std::string& uri_component, std::string delimiter);
 
 int ParseSubComponent(Uri& uri, int (Uri::*Parser)(std::string& param),
                       std::string& uri_component, std::string delimiter) {

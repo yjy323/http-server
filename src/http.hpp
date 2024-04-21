@@ -155,8 +155,9 @@ struct HeadersOut {
   std::string allow;
   std::string connection;
 
-  std::time_t date_t;
+  ssize_t content_length_n;
   bool connection_close;
+  std::time_t date_t;
 };
 
 const char* HttpGetReasonPhase(int status_code);
