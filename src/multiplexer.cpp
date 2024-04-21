@@ -133,7 +133,6 @@ void Multiplexer::HandleEvents(int nev) {
     } else if (events[i].filter == EVFILT_WRITE) {
       std::clog << "[event type] WRITE" << std::endl;
       HandleWriteEvent(events[i]);
-      // clients_[events[i].ident].ResetClientTransactionInfo();
     } else if (events[i].filter == EVFILT_PROC) {
       std::clog << "[event type] PROC" << std::endl;
       HandleCgiEvent(events[i]);
@@ -182,11 +181,12 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
           client.transaction().HttpProcess();
           if (client.transaction().cgi().on()) {
             pid_t pid = client.transaction().ExecuteCgi();
-            if (pid > 0 && eh_.AddWithTimer(pid, EVFILT_PROC, EV_ONESHOT, 0, 0,
-                                            static_cast<void*>(&client.fd()),
-                                            CGI_EVENT_TIMEOUT) == ERROR) {
+            if (pid > 0 &&
+                eh_.AddWithTimer(pid, EVFILT_PROC, EV_ONESHOT, NOTE_EXIT, 0,
+                                 &client.fd(), CGI_EVENT_TIMEOUT) == ERROR) {
               return;
             }
+            return;
           }
 
           client.CreateResponseMessage();
@@ -213,22 +213,23 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
   if (client.SendResponseMessage() == -1 ||
       this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
                     KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
-    DisconnetClient(client);
   }
 
   std::cout << "Response Message Send Success." << std::endl;
 
   client.ResetClientInfo();
+  DisconnetClient(client);
 }
 
 void Multiplexer::HandleCgiEvent(struct kevent& event) {
-  Client& client = *clients_[*reinterpret_cast<int*>(event.udata)];
+  Client& client = *clients_[*static_cast<int*>(event.udata)];
+
   if (event.flags & EV_ERROR) {
     client.transaction().set_status_code(HTTP_BAD_GATEWAY);
   }
   client.CreateResponseMessageByCgi();
 
-  if (eh_.Add(event.ident, EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
+  if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
       ERROR) {
     DisconnetClient(client);
   }
