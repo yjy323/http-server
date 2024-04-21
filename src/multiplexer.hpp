@@ -40,7 +40,6 @@ class Multiplexer {
 
   int AcceptWithClient(int server_fd);
   void DisconnetClient(Client& client);
-  int ReceiveRequest(Client& client);
 
   Servers servers_;
   Clients clients_;

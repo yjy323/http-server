@@ -156,7 +156,7 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
   } else if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
     Client& client = *clients_[event.ident];
 
-    if (this->ReceiveRequest(client) == ERROR) {
+    if (client.ReceiveRequest() <= 0) {
       DisconnetClient(client);
       return;
     }
@@ -213,12 +213,12 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
   if (client.SendResponseMessage() == -1 ||
       this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
                     KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
+    DisconnetClient(client);
   }
 
   std::cout << "Response Message Send Success." << std::endl;
 
   client.ResetClientInfo();
-  DisconnetClient(client);
 }
 
 void Multiplexer::HandleCgiEvent(struct kevent& event) {
@@ -274,13 +274,4 @@ void Multiplexer::DisconnetClient(Client& client) {
   delete &client;
   clients_.erase(client.fd());
   eh_.Delete(client.fd());
-}
-
-int Multiplexer::ReceiveRequest(Client& client) {
-  ssize_t bytes_read = client.ReceiveRequest();
-
-  if (bytes_read == -1) {
-    return ERROR;
-  }
-  return OK;
 }
