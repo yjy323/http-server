@@ -39,8 +39,6 @@ int ConfigurationParser::Parse(const std::string& contents,
   if (EraseComment(contents_copy) == ERROR ||
       Tokenize(contents_copy, tokens) == ERROR ||
       Parse(tokens, configuration) == ERROR) {
-    std::cerr << PARSE_ERROR_MESSAGE << std::endl;
-
     return ERROR;
   }
 
@@ -191,7 +189,6 @@ int ConfigurationParser::ParseServer(const Tokens& tokens,
                           index) == ERROR)
         return ERROR;
       if (parsed_directive.find(directive) != parsed_directive.end()) {
-        std::cerr << "\"" << directive << "\" directive is duplicate";
         return ERROR;
       }
       parsed_directive.insert(directive);
@@ -295,7 +292,6 @@ int ConfigurationParser::ParseLocation(
                             allowed_method, return_uri, upload_store) == ERROR)
         return ERROR;
       if (parsed_directive.find(directive) != parsed_directive.end()) {
-        std::cerr << "\"" << directive << "\" directive is duplicate";
         return ERROR;
       }
       parsed_directive.insert(directive);
@@ -505,8 +501,6 @@ int ConfigurationParser::ValidServerUnique(const Configuration& conf) {
       } else {
         if (server_names[it_conf->port()].find(*it_server_names) !=
             server_names[it_conf->port()].end()) {
-          std::cerr << PORT_HOST_VALID_ERROR_MESSAGE << std::endl;
-
           return ERROR;
         } else {
           server_names[it_conf->port()].insert(*it_server_names);

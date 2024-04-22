@@ -110,10 +110,8 @@ int Multiplexer::OpenServers() {
     int nev;
 
     if (eh_.Polling(nev, POLLING_TIMEOUT) == ERROR) {
-      std::cout << "polling error" << std::endl;
       continue;
     }
-    std::cout << "nev: " << nev << std::endl;
     HandleEvents(nev);
   }
   return OK;
@@ -123,24 +121,17 @@ void Multiplexer::HandleEvents(int nev) {
   struct kevent* events = eh_.events();
 
   for (int i = 0; i < nev; ++i) {
-    std::cout << "[event ident] " << events[i].ident << std::endl;
     if (events[i].flags | EV_ERROR && !(events[i].filter & EVFILT_PROC)) {
-      std::clog << "[event type] ERROR" << std::endl;
       HandleErrorEvent(events[i]);
     } else if (events[i].filter == EVFILT_READ) {
-      std::clog << "[event type] READ" << std::endl;
       HandleReadEvent(events[i]);
     } else if (events[i].filter == EVFILT_WRITE) {
-      std::clog << "[event type] WRITE" << std::endl;
       HandleWriteEvent(events[i]);
     } else if (events[i].filter == EVFILT_PROC) {
-      std::clog << "[event type] PROC" << std::endl;
       HandleCgiEvent(events[i]);
     } else if (events[i].filter == EVFILT_TIMER) {
-      std::clog << "[event type] TIMER" << std::endl;
       HandleTimeoutEvent(events[i]);
     } else {
-      std::cerr << "UNDEFINE_FILTER_ERROR_MASSAGE" << std::endl;
     }
   }
 }
@@ -176,9 +167,6 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
         }
       } else {
         if (client.IsReceiveRequestBodyComplete()) {
-          std::cout << "[Request Start]" << std::endl;
-          std::cout << client.request() << std::endl;
-          std::cout << "[Request End]" << std::endl;
           if (client.transaction().status_code() != HTTP_OK ||
               client.ParseRequestBody() != HTTP_OK) {
             client.CreateResponseMessage();
@@ -227,19 +215,12 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
 }
 
 void Multiplexer::HandleWriteEvent(struct kevent& event) {
-  std::cout << std::endl << *static_cast<int*>(event.udata) << std::endl;
   if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
     Client& client = *clients_[event.ident];
-
-    std::cout << "[Response Message Start]" << std::endl;
-    std::cout << client.response() << std::endl;
-    std::cout << "[Response Message End]" << std::endl;
 
     if (client.SendResponseMessage() == -1) {
       return (void)DisconnetClient(client);
     }
-
-    std::cout << "Response Message Send Success." << std::endl;
 
     if (!client.transaction().headers_out().connection_close) {
       if (this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
@@ -339,7 +320,6 @@ int Multiplexer::AcceptWithClient(int server_fd) {
                        EVENT_TIMEOUT) == ERROR)
     return ERROR;
 
-  std::cout << "Successful Accept With " << client_fd << std::endl;
   return OK;
 }
 

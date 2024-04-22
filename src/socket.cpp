@@ -31,10 +31,7 @@ Socket& Socket::operator=(const Socket& ref) {
 }
 
 #include <iostream>
-Socket::~Socket() {
-  close(fd_);
-  std::cout << "socket[" << fd_ << "] closed." << std::endl;
-}
+Socket::~Socket() { close(fd_); }
 
 int Socket::Listen(int backlog) { return listen(fd_, backlog); }
 

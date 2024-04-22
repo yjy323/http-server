@@ -13,8 +13,6 @@ int FileReader::ReadFile(const std::string& filePath, std::string& contents) {
 
   if (!fileStream.is_open()) {
     return ERROR;
-
-    std::cerr << ERROR_MESSAGE << std::endl;
   };
 
   buffer << fileStream.rdbuf();
