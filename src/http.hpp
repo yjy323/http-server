@@ -167,6 +167,7 @@ const std::string HttpInsertHeader(std::map<HeaderKey, HeaderValue>& headers,
                                    const std::string value);
 
 int HttpHost(HeadersIn&, const std::string);
+int HttpContentType(HeadersIn&, const std::string);
 int HttpContentLength(HeadersIn&, const std::string);
 int HttpTransferEncoding(HeadersIn&, const std::string);
 int HttpConnection(HeadersIn&, const std::string);

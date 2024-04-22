@@ -102,7 +102,11 @@ int Transaction::ParseRequestHeader(std::string buff) {
         continue;
       }
     } else if (line.empty()) {
-      RETURN_STATUS_CODE HTTP_OK;
+      if (headers_in_.host == "") {
+        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      } else {
+        RETURN_STATUS_CODE HTTP_OK;
+      }
     } else {
       if (ParseFieldValue(line) == HTTP_BAD_REQUEST) {
         RETURN_STATUS_CODE HTTP_BAD_REQUEST;
@@ -229,8 +233,6 @@ std::string Transaction::CreateResponseMessage() {
   headers_out_.date_t = std::time(NULL);
   headers_out_.date = MakeRfc850Time(headers_out_.date_t);
 
-  AppendStatusLine();
-
   AppendResponseHeader("Server", headers_out_.server);
   AppendResponseHeader("Date", headers_out_.date);
   const int CLASS_OF_RESPONSE = status_code_ / 100;
@@ -270,10 +272,10 @@ std::string Transaction::CreateResponseMessage() {
     headers_out_.connection = HTTP_CONNECTION_OPTION_CLOSE;
   }
   AppendResponseHeader("Connection", headers_out_.connection);
+
+  AppendStatusLine();
   response_ += CRLF;
   response_ += body_out_;
-
-  std::cout << "[TRANSACTION RESPONSE]\n" << response_;
   return response_;
 }
 
@@ -325,7 +327,7 @@ int Transaction::ParseRequestLine(std::string& request_line) {
   std::string method = request_line_component[0];
   std::string request_target = request_line_component[1];
   std::string http_version = request_line_component[2];
-  if (method.length() == 0 || !IsToken(method, false)) {
+  if (method.length() == 0 || !IsToken(method, "")) {
     RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
   if (this->uri_.ParseUriComponent(request_target) == HTTP_BAD_REQUEST) {
@@ -358,7 +360,7 @@ int Transaction::ParseFieldValue(std::string& field_line) {
   }
 
   field_name = ToCaseInsensitive(field_line.substr(0, delimiter_pos));
-  if (field_name.length() == 0 || !IsToken(field_name, false)) {
+  if (field_name.length() == 0 || !IsToken(field_name, "")) {
     RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
 
@@ -537,9 +539,14 @@ void Transaction::SetCgiEnv() {
     cgi_.envp().push_back(SetEnv("QUERY_STRING=", uri_.query_string().c_str()));
 
   } else if (method_ == HTTP_POST_METHOD) {
+    std::string path_info = config_.root() + config_.upload_store();
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "POST"));
     cgi_.envp().push_back(
         SetEnv("CONTENT_LENGTH=", headers_in_.content_length.c_str()));
+    cgi_.envp().push_back(
+        SetEnv("CONTENT_TYPE=", headers_in_.content_type.c_str()));
+
+    cgi_.envp().push_back(SetEnv("PATH_INFO=", path_info.c_str()));
   }
 }
 
@@ -562,9 +569,6 @@ void Transaction::SetErrorPage() {
     entity_ = Entity(ERROR_PAGE_PATH);
     entity_.ReadFile(ERROR_PAGE_PATH.c_str());
   } else {
-    if (config_.error_page() != "") {
-      status_code_ = HTTP_FORBIDDEN;
-    }
     entity_.CreatePage(std::to_string(status_code_) + " " +
                        HttpGetReasonPhase(status_code_));
   }
@@ -618,8 +622,8 @@ void Transaction::SetResponseFromCgi() {
 }
 
 std::string Transaction::AppendStatusLine() {
-  return response_ += http_version_ + " " + std::to_string(status_code_) + " " +
-                      HttpGetReasonPhase(status_code_) + CRLF;
+  return response_ = http_version_ + " " + std::to_string(status_code_) + " " +
+                     HttpGetReasonPhase(status_code_) + CRLF + response_;
 }
 
 std::string Transaction::AppendResponseHeader(const std::string key,

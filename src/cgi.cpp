@@ -49,7 +49,7 @@ Cgi::~Cgi() {
 }
 Cgi& Cgi::operator=(const Cgi& obj) {
   if (this != &obj) {
-    for (Iterator it = obj.envp_.begin(); it != obj.envp_.end(); ++it) {
+    for (Iterator it = obj.argv_.begin(); it != obj.argv_.end(); ++it) {
       this->argv_.push_back(*it);
     }
     for (Iterator it = obj.envp_.begin(); it != obj.envp_.end(); ++it) {

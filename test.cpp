@@ -16,11 +16,13 @@ std::string generateMultipartFormData() {
   // 요청 본문 생성
   std::ostringstream requestBody;
   requestBody << "--" << boundary << "\r\n";
-  requestBody << "Content-Disposition: form-data; name=\"username\"\r\n\r\n";
+  requestBody << "Content-Disposition: form-data; name=\"file\"; "
+                 "filename=\"test.txt\"\r\n\r\n";
   requestBody << "user\r\n";
   requestBody << "--" << boundary << "\r\n";
-  requestBody << "Content-Disposition: form-data; name=\"password\"\r\n\r\n";
-  requestBody << "pass\r\n";
+  requestBody << "Content-Disposition: form-data; name=\"file2\"; "
+                 "filename=\"test2.txt\"\r\n\r\n";
+  requestBody << "password\r\n";
   requestBody << "--" << boundary << "--\r\n";
 
   return requestBody.str();
@@ -34,11 +36,17 @@ int main() {
   std::string form_data = generateMultipartFormData();
   std::cout << form_data;
 
+  std::string request_method = "REQUEST_METHOD=POST";
   std::string content_length =
-      "Content-Length: " + std::to_string(form_data.length());
+      "CONTENT_LENGTH=" + std::to_string(form_data.length());
+  std::string content_type =
+      "CONTENT_TYPE=multipart/form-data; "
+      "boundary=----Boundary123456789";
 
   char* argv_[] = {"/usr/bin/python3", "./www/cgi-bin/upload.py", NULL};
-  char* envp_[] = {const_cast<char*>(content_length.c_str()), NULL};
+  char* envp_[] = {const_cast<char*>(request_method.c_str()),
+                   const_cast<char*>(content_type.c_str()),
+                   const_cast<char*>(content_length.c_str()), NULL};
 
   if (pipe(cgi2server_fd_) == -1 || pipe(server2cgi_fd_) == -1) {
     return 1;

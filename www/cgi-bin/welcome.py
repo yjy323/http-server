@@ -39,12 +39,37 @@ html_template = """<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to My Web Server</title>
+    <style>
+			body {
+				font-family: Arial, sans-serif;
+				margin: 0;
+				padding: 0;
+				background-color: #f0f0f0;
+				color: #333;
+			}
+
+			.container {
+				max-width: 800px;
+				margin: 50px auto;
+				padding: 20px;
+				background-color: #fff;
+				border-radius: 5px;
+				box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+			}
+
+			h1 {
+				text-align: center;
+				color: #ff2f00;
+			}
+		</style>
 </head>
 <body>
+	<div class="container">
     <h1>Welcome to My Web Server, %s!</h1>
     <p>This is a dynamically generated HTML page served by your own web server.</p>
     <p>You can modify this file to serve any content you want.</p>
     <p>If you have any questions or need further assistance, feel free to contact me.</p>
+  </div>
 </body>
 </html>"""
 
