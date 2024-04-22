@@ -124,8 +124,17 @@ int HttpContentLength(HeadersIn& headers_in, std::string value) {
   }
 }
 
+int HttpContentType(HeadersIn& headers_in, const std::string value) {
+  if (!IsToken(value, "/")) {
+    return HTTP_BAD_REQUEST;
+  } else {
+    headers_in.content_type = ToCaseInsensitive(value);
+    return HTTP_OK;
+  }
+}
+
 int HttpTransferEncoding(HeadersIn& headers_in, std::string value) {
-  if (!IsToken(value, true)) {
+  if (!IsToken(value, ", ")) {
     return HTTP_BAD_REQUEST;
   } else if (ToCaseInsensitive(Trim(value)) != "chunked") {
     return HTTP_NOT_IMPLEMENTED;
@@ -137,7 +146,7 @@ int HttpTransferEncoding(HeadersIn& headers_in, std::string value) {
 }
 
 int HttpConnection(HeadersIn& headers_in, std::string value) {
-  if (!IsToken(value, true)) {
+  if (!IsToken(value, ", ")) {
     return HTTP_BAD_REQUEST;
   } else {
     headers_in.connection = value;

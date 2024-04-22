@@ -82,7 +82,6 @@ int Client::ReadCgi(std::string& cgi_res) {
   while ((bytes_read = read(cgi.cgi2server_fd()[0], buffer, BUFFER_SIZE - 1)) >
          0) {
     buffer[BUFFER_SIZE - 1] = 0;
-
     cgi_res += buffer;
   }
 
@@ -90,9 +89,14 @@ int Client::ReadCgi(std::string& cgi_res) {
 }
 
 bool Client::IsReceiveRequestHeaderComplete() {
-  if (size_t header_end =
-          request_.find(REQUEST_HEADER_END) == std::string::npos) {
-    return true;
+  std::cout << "[Request Current Start]" << std::endl;
+  for (size_t idx = 0; idx < request_.length(); idx++) {
+    std::cout << static_cast<int>(request_[idx]) << " ";
+  }
+  std::cout << "[Request Current End]" << std::endl;
+	
+  if (request_.find(REQUEST_HEADER_END) == std::string::npos) {
+    return false;
   }
 
   return true;

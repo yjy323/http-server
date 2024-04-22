@@ -82,7 +82,7 @@ bool IsObsText(unsigned char c) {
   }
 }
 
-bool IsToken(const std::string s, bool is_list) {
+bool IsToken(const std::string s, std::string delimiter) {
   // token = 1*tchar
   for (size_t i = 0; i < s.length(); ++i) {
     char c = s[i];
@@ -111,7 +111,7 @@ bool IsToken(const std::string s, bool is_list) {
       default:
         if (std::isalnum(c)) {
           break;
-        } else if (is_list && (c == ',' || c == ' ')) {
+        } else if (delimiter.find(c) != delimiter.npos) {
           break;
         } else {
           return false;
