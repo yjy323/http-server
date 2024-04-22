@@ -548,6 +548,7 @@ void Transaction::SetCgiEnv() {
 
     cgi_.envp().push_back(SetEnv("PATH_INFO=", path_info.c_str()));
   }
+  cgi_.envp().push_back(NULL);
 }
 
 void Transaction::SetAllowdMethod() {
