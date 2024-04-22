@@ -22,6 +22,7 @@ class EventHandler {
   int Polling(int& nev, long timeout_sec);
   int Add(int ident, int16_t filter, uint64_t flags, uint32_t fflags,
           int64_t data, void* udata);
+  int Delete(int ident, int16_t filter);
   int AddWithTimer(int ident, int16_t filter, uint64_t flags, uint32_t fflags,
                    int64_t data, void* udata, int time_sec);
   int Delete(int ident);
