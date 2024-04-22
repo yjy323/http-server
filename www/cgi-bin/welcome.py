@@ -21,7 +21,7 @@ if os.environ.get("REQUEST_METHOD") == 'POST':
                 break
     except ValueError:
         # If there's an error in reading POST data, set username to "Guest"
-        username = "Guest"
+        username = "42 Guest"
 else:
 		# Get user's name from form input
 		form = cgi.FieldStorage()
@@ -30,7 +30,7 @@ else:
 				username = form.getvalue('username')
 		else:
 				# If username is not provided, set it to "Guest"
-				username = "Guest"
+				username = "42 Guest"
 
 # HTML template for the response
 html_template = """<!DOCTYPE html>
@@ -65,10 +65,7 @@ html_template = """<!DOCTYPE html>
 </head>
 <body>
 	<div class="container">
-    <h1>Welcome to My Web Server, %s!</h1>
-    <p>This is a dynamically generated HTML page served by your own web server.</p>
-    <p>You can modify this file to serve any content you want.</p>
-    <p>If you have any questions or need further assistance, feel free to contact me.</p>
+    <h1>Thank you for evaluation, %s!</h1>
   </div>
 </body>
 </html>"""
