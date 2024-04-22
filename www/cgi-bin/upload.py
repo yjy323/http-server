@@ -8,18 +8,17 @@ import datetime
 cgitb.enable()
 
 def Upload(file, path_info):
-    file_name = file.filename
-    file_value = file.value
-    if file_name is not None:
-					file_path = path_info + file_name
-					with open(file_path, 'wb') as file:
-								file.write(file_value)
+	file_name = file.filename
+	file_value = file.value
+	file_path = path_info + file_name
+	with open(file_path, 'wb') as file:
+		file.write(file_value)
 
 request_method = os.environ.get("REQUEST_METHOD")
 content_type = os.environ.get("CONTENT_TYPE")
 content_length = int(os.environ.get("CONTENT_LENGTH"))
 path_info = os.environ.get("PATH_INFO")
-
+print(path_info)
 form = cgi.FieldStorage(
     fp=None,
     environ={'CONTENT_TYPE': content_type,
@@ -36,6 +35,7 @@ error_flag = False
 for file in form:
 	try:
 		if form[file].filename is not None and form[file].filename != "":
+			print(file)
 			Upload(form[file], path_info)
 			cnt += 1
 	except:

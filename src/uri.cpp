@@ -194,6 +194,10 @@ int Uri::ParseUriComponent(std::string request_uri) {
     return HTTP_BAD_REQUEST;
   }
 
+  if (request_uri.length() > 8000) {
+    return HTTP_REQUEST_URI_TOO_LARGE;
+  }
+
   if (ParseSubComponent(*this, &Uri::ParseQuery, request_uri, "?") ==
       HTTP_BAD_REQUEST) {
     return HTTP_BAD_REQUEST;
