@@ -107,7 +107,7 @@ bool Cgi::IsCgiProgram(const char* extension) {
 }
 
 bool Cgi::IsCgiScript(const char* extension) {
-  if (std::strncmp(extension, PY_FILE, std::strlen(PY_FILE) + 1)) {
+  if (std::strncmp(extension, PY_FILE, std::strlen(PY_FILE) + 1) == 0) {
     return true;
   } else {
     return false;
@@ -149,9 +149,8 @@ pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
     close(cgi2server_fd_[0]);
     dup2(cgi2server_fd_[1], STDOUT_FILENO);
     close(cgi2server_fd_[1]);
-
     execve(*argv_.data(), argv_.data(), envp_.data());
-    exit(1);
+    std::exit(HTTP_INTERNAL_SERVER_ERROR);
   } else {
     close(server2cgi_fd_[0]);
     close(cgi2server_fd_[1]);

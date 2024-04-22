@@ -59,7 +59,7 @@ html_template = """<!DOCTYPE html>
 
 			h1 {
 				text-align: center;
-				color: #ff2f00;
+				color: #007bff;
 			}
 		</style>
 </head>

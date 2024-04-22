@@ -165,7 +165,6 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
       int http_status = client.ParseRequestHeader();
 
       if (http_status != HTTP_OK) {
-        client.transaction().HttpProcess();
         client.CreateResponseMessage();
         if (this->eh_.AddWithTimer(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0,
                                    &CLIENT_UDATA,
@@ -230,6 +229,8 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
 void Multiplexer::HandleCgiEvent(struct kevent& event) {
   if (clients_.find(*static_cast<int*>(event.udata)) == clients_.end()) return;
   Client& client = *clients_[*static_cast<int*>(event.udata)];
+
+  std::cout << "\n\n" << event.data << "\n\n";
 
   if (event.flags & EV_ERROR) {
     client.transaction().set_status_code(HTTP_BAD_GATEWAY);

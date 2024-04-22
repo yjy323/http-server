@@ -89,12 +89,6 @@ int Client::ReadCgi(std::string& cgi_res) {
 }
 
 bool Client::IsReceiveRequestHeaderComplete() {
-  std::cout << "[Request Current Start]" << std::endl;
-  for (size_t idx = 0; idx < request_.length(); idx++) {
-    std::cout << static_cast<int>(request_[idx]) << " ";
-  }
-  std::cout << "[Request Current End]" << std::endl;
-	
   if (request_.find(REQUEST_HEADER_END) == std::string::npos) {
     return false;
   }
