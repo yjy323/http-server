@@ -110,7 +110,7 @@ bool Client::IsReceiveRequestHeaderComplete() {
 bool Client::IsReceiveRequestBodyComplete() {
   const HeadersIn& headers_in = transaction_.headers_in();
   const Transaction::Configuration& config = transaction_.config();
-  const size_t& content_length = headers_in.content_length_n;
+  const ssize_t& content_length = headers_in.content_length_n;
   const std::string& transfer_encoding = headers_in.transfer_encoding;
   const std::string& request_body = this->request_body();
   const size_t& client_max_body_size =
@@ -123,7 +123,7 @@ bool Client::IsReceiveRequestBodyComplete() {
   if (content_length >= 0) {
     if (request_body.length() > client_max_body_size) {
       transaction_.set_status_code(HTTP_REQUEST_ENTITY_TOO_LARGE);
-    } else if (request_body.length() < content_length) {
+    } else if ((ssize_t)request_body.length() < content_length) {
       return false;
     }
   } else if (transfer_encoding == "chunked") {

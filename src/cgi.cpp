@@ -3,7 +3,7 @@
 #define CGI_FILE ".cgi\0"
 #define PY_FILE ".py\0"
 
-typedef std::vector<char* const>::const_iterator Iterator;
+typedef std::vector<char*>::const_iterator Iterator;
 
 /*
  Cgi 비멤버 함수
