@@ -48,7 +48,7 @@ Cgi::Cgi()
       envp_(std::vector<char*>()),
       cgi2server_fd_(),
       server2cgi_fd_(),
-      pid_(-1),
+      pid_(0),
       on_(false),
       response_(""),
       headers_() {
@@ -92,7 +92,6 @@ Cgi& Cgi::operator=(const Cgi& obj) {
 }
 
 void Cgi::set_response(std::string response) { this->response_ = response; }
-void Cgi::set_pid(pid_t pid) { this->pid_ = pid; }
 
 const std::vector<char*>& Cgi::argv() const { return this->argv_; }
 const std::vector<char*>& Cgi::envp() const { return this->envp_; }
@@ -170,15 +169,22 @@ pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
 
     ClosePipeFd(&cgi2server_fd_[0]);
     dup2(cgi2server_fd_[1], STDOUT_FILENO);
-
     ClosePipeFd(&cgi2server_fd_[1]);
+
     execve(argv_.data()[0], argv_.data(), envp_.data());
     std::exit(HTTP_INTERNAL_SERVER_ERROR);
   } else {
     ClosePipeFd(&server2cgi_fd_[0]);
     ClosePipeFd(&cgi2server_fd_[1]);
-    // while()
-    write(server2cgi_fd_[1], form_data, std::strlen(form_data));
+
+    size_t len = std::strlen(form_data);
+    while (len > 0) {
+      ssize_t chunk_size = write(server2cgi_fd_[1], form_data, len);
+      if (chunk_size < 0) return HTTP_INTERNAL_SERVER_ERROR;
+
+      form_data += chunk_size;
+      len -= chunk_size;
+    }
     ClosePipeFd(&server2cgi_fd_[1]);
   }
 

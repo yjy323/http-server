@@ -20,6 +20,11 @@ h1 {
 	color: #007bff;
 }
 
+h3 {
+	text-align: center;
+	color: #2f6eb0;
+}
+
 form {
 	text-align: center;
 	margin-top: 20px;

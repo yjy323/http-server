@@ -167,13 +167,13 @@ std::string Entity::CreateDirectoryListingPage(std::string path,
           if (S_ISDIR(fileStat.st_mode)) {
             filename += "/";
           }
-          html << "<a href=\"" << filename << "\">" << filename << "</a>\t";
+          html << "<a href=\"" << filename << "\">" << filename << "</a>\t\t";
           html << std::right << std::setw(10)
                << std::put_time(std::localtime(&fileStat.st_mtime),
                                 "%d-%b-%Y %H:%M")
                << "\t";
           if (S_ISDIR(fileStat.st_mode)) {
-            html << std::setw(10) << "--\t";
+            html << std::setw(10) << "----\t";
           } else {
             html << std::setw(10) << fileStat.st_size << "\t";
           }
