@@ -225,7 +225,7 @@ std::string Transaction::CreateResponseMessage() {
 
   response_ = std::string();
 
-  if (cgi_.on()) {
+  if (status_code_ == HTTP_OK && cgi_.on()) {
     SetResponseFromCgi();
   }
 
