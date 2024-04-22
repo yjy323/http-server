@@ -92,10 +92,10 @@ int Client::ReadCgi(std::string& cgi_res) {
   ssize_t bytes_read;
   while ((bytes_read = read(cgi.cgi2server_fd()[0], buffer, BUFFER_SIZE - 1)) >
          0) {
-    buffer[BUFFER_SIZE - 1] = 0;
+    buffer[bytes_read] = 0;
     cgi_res += buffer;
   }
-
+  close(cgi.cgi2server_fd()[0]);
   return bytes_read;
 }
 
