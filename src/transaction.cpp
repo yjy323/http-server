@@ -15,12 +15,26 @@
         비멤버 함수
 */
 char* SetEnv(const char*, const char*);
+std::string SetPath(std::string root, std::string path);
 
 char* SetEnv(const char* key, const char* value) {
   char* env = new char[std::strlen(key) + std::strlen(value) + 1];
   std::strcpy(env, key);
   std::strcat(env, value);
   return env;
+}
+
+std::string SetRootPath(std::string root, std::string path) {
+  std::string root_path;
+  if (root.length() > 0 && root[0] != '.') {
+    root_path.append(".");
+  }
+  root_path.append(root);
+  if (path.length() > 0 && path[0] != '/') {
+    root_path.append("/");
+  }
+  root_path.append(path);
+  return root_path;
 }
 /*
         멤버함수
@@ -95,8 +109,8 @@ int Transaction::ParseRequestHeader(std::string buff) {
     if (start_line_flag && line.empty()) {
       continue;
     } else if (start_line_flag) {
-      if (ParseRequestLine(line) == HTTP_BAD_REQUEST) {
-        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      if (ParseRequestLine(line) != HTTP_OK) {
+        RETURN_STATUS_CODE status_code_;
       } else {
         start_line_flag = false;
         continue;
@@ -108,8 +122,8 @@ int Transaction::ParseRequestHeader(std::string buff) {
         RETURN_STATUS_CODE HTTP_OK;
       }
     } else {
-      if (ParseFieldValue(line) == HTTP_BAD_REQUEST) {
-        RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+      if (ParseFieldValue(line) != HTTP_OK) {
+        RETURN_STATUS_CODE status_code_;
       }
     }
   }
@@ -181,7 +195,7 @@ int Transaction::HttpProcess() {
     RETURN_STATUS_CODE HTTP_MOVED_PERMANENTLY;
   }
 
-  target_resource_ = "." + config_.root() + uri_.decoded_request_target();
+  target_resource_ = SetRootPath(config_.root(), uri_.decoded_request_target());
 
   if (config_.allowed_method().find(method_) ==
       config_.allowed_method().end()) {
@@ -198,7 +212,7 @@ int Transaction::HttpProcess() {
   }
 
   if (method_ == HTTP_DELETE_METHOD) {
-    RETURN_STATUS_CODE HttpGet();
+    RETURN_STATUS_CODE HttpDelete();
   }
 
   RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
@@ -232,6 +246,12 @@ std::string Transaction::CreateResponseMessage() {
   headers_out_.connection_close = headers_in_.connection_close;
   headers_out_.date_t = std::time(NULL);
   headers_out_.date = MakeRfc850Time(headers_out_.date_t);
+
+  if (body_out_ == "") {
+    entity_.CreatePage(std::to_string(status_code_) + " " +
+                       HttpGetReasonPhase(status_code_));
+    SetResponseFromEntity();
+  }
 
   AppendResponseHeader("Server", headers_out_.server);
   AppendResponseHeader("Date", headers_out_.date);
@@ -275,7 +295,10 @@ std::string Transaction::CreateResponseMessage() {
 
   AppendStatusLine();
   response_ += CRLF;
-  response_ += body_out_;
+  if (body_out_ == "") {
+  } else {
+    response_ += body_out_;
+  }
   return response_;
 }
 
@@ -330,8 +353,9 @@ int Transaction::ParseRequestLine(std::string& request_line) {
   if (method.length() == 0 || !IsToken(method, "")) {
     RETURN_STATUS_CODE HTTP_BAD_REQUEST;
   }
-  if (this->uri_.ParseUriComponent(request_target) == HTTP_BAD_REQUEST) {
-    RETURN_STATUS_CODE HTTP_BAD_REQUEST;
+  if ((status_code_ = this->uri_.ParseUriComponent(request_target)) !=
+      HTTP_OK) {
+    RETURN_STATUS_CODE status_code_;
   }
   if (http_version != HTTP_1_1 && http_version != HTTP_1_0) {
     RETURN_STATUS_CODE HTTP_BAD_REQUEST;
@@ -452,8 +476,8 @@ int Transaction::HttpGet() {
   }
   entity_ = Entity(target_resource_);
   if (entity_.type() == Entity::kDirectory) {
-    if (config_.index() != "") {
-      target_resource_ = "." + config_.root() + "/" + config_.index();
+    std::string index_file = SetRootPath(config_.root(), config_.index());
+    if (config_.index() != "" && Entity::IsFileReadable(index_file.c_str())) {
       RETURN_STATUS_CODE HttpGet();
     } else if (config_.auto_index()) {
       entity_.CreateDirectoryListingPage(target_resource_.c_str(),
@@ -506,34 +530,13 @@ int Transaction::HttpDelete() {
     RETURN_STATUS_CODE HTTP_FORBIDDEN;
   }
 
-  entity_.ReadFile(target_resource_.c_str());
-  SetResponseFromEntity();
   if (std::remove(this->target_resource_.c_str()) != 0) {
     RETURN_STATUS_CODE HTTP_INTERNAL_SERVER_ERROR;
   }
-  body_out_ = entity_.CreatePage("DELETED: " + uri_.decoded_request_target());
   RETURN_STATUS_CODE HTTP_OK;
 }
 
 void Transaction::SetCgiEnv() {
-  /*
-                cgi_.envp().push_back(SetEnv("AUTH_TYPE=", ""));
-                cgi_.envp().push_back(SetEnv("CONTENT_LENGTH=", ""));
-                cgi_.envp().push_back(SetEnv("CONTENT_TYPE=", ""));
-                cgi_.envp().push_back(SetEnv("GATEWAY_INTERFACE=", ""));
-                cgi_.envp().push_back(SetEnv("PATH_INFO=", ""));
-                cgi_.envp().push_back(SetEnv("PATH_TRANSLATED=", ""));
-                cgi_.envp().push_back(SetEnv("QUERY_STRING=", ""));
-                cgi_.envp().push_back(SetEnv("REMOTE_ADDR=", ""));
-                cgi_.envp().push_back(SetEnv("REMOTE_HOST=", ""));
-                cgi_.envp().push_back(SetEnv("REMOTE_IDENT=", ""));
-                cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", ""));
-                cgi_.envp().push_back(SetEnv("SCRIPT_NAME=", ""));
-                cgi_.envp().push_back(SetEnv("SERVER_NAME=", ""));
-                cgi_.envp().push_back(SetEnv("SERVER_PORT=", ""));
-                cgi_.envp().push_back(SetEnv("SERVER_PROTOCOL=", ""));
-                cgi_.envp().push_back(SetEnv("SERVER_SOFTWARE=", ""));
-  */
   cgi_.envp().push_back(SetEnv("AUTH_TYPE=", ""));
   cgi_.envp().push_back(SetEnv("GATEWAY_INTERFACE=", ""));
   cgi_.envp().push_back(SetEnv("PATH_TRANSLATED=", ""));
@@ -543,16 +546,15 @@ void Transaction::SetCgiEnv() {
   cgi_.envp().push_back(SetEnv("SCRIPT_NAME=", ""));
   cgi_.envp().push_back(SetEnv("SERVER_NAME=", ""));
   cgi_.envp().push_back(SetEnv("SERVER_PORT=", ""));
-  cgi_.envp().push_back(SetEnv("PATH_INFO=", "/"));
   cgi_.envp().push_back(SetEnv("SERVER_PROTOCOL=", "HTTP/1.1"));
-  cgi_.envp().push_back(SetEnv("SERVER_SOFTWARE=", "Webserv/1.0"));
+  cgi_.envp().push_back(SetEnv("SERVER_SOFTWARE=", "webserv/1.0"));
 
   if (method_ == HTTP_GET_METHOD) {
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "GET"));
     cgi_.envp().push_back(SetEnv("QUERY_STRING=", uri_.query_string().c_str()));
 
   } else if (method_ == HTTP_POST_METHOD) {
-    std::string path_info = "." + config_.root() + "/" + config_.upload_store();
+    std::string path_info = SetRootPath(config_.root(), config_.upload_store());
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "POST"));
     cgi_.envp().push_back(
         SetEnv("CONTENT_LENGTH=", headers_in_.content_length.c_str()));
@@ -576,17 +578,14 @@ void Transaction::SetAllowdMethod() {
 
 void Transaction::SetErrorPage() {
   const std::string ERROR_PAGE_PATH =
-      "." + config_.root() + "/" + config_.error_page();
+      SetRootPath(config_.root(), config_.error_page());
 
   if (config_.error_page() != "" &&
       entity_.IsFileReadable(ERROR_PAGE_PATH.c_str())) {
     entity_ = Entity(ERROR_PAGE_PATH);
     entity_.ReadFile(ERROR_PAGE_PATH.c_str());
-  } else {
-    entity_.CreatePage(std::to_string(status_code_) + " " +
-                       HttpGetReasonPhase(status_code_));
+    SetResponseFromEntity();
   }
-  SetResponseFromEntity();
 }
 
 void Transaction::SetResponseFromEntity() {
