@@ -50,6 +50,7 @@ class Cgi {
 
   void set_response(std::string response);
   void set_pid(pid_t pid);
+  void set_server2cgi_fd(int idx, int server2cgi_fd);
 
  private:
   bool IsCgiProgram(const char*);

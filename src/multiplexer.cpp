@@ -12,11 +12,11 @@ static const int BACKLOG = 128;
 static const int EVENT_SIZE = 30;
 static const int POLLING_TIMEOUT = 120;
 static const int EVENT_TIMEOUT = 10;
-static const int CGI_EVENT_TIMEOUT = 30;
-static const int KEEP_ALIVE_TIMEOUT = 60;
-static const int SEND_EVENT_TIMEOUT = 60;
-static int SERVER_UDATA = (1 << 0);
-static int CLIENT_UDATA = (1 << 1);
+static const int CGI_EVENT_TIMEOUT = 5;
+static const int KEEP_ALIVE_TIMEOUT = 10;
+static const int SEND_EVENT_TIMEOUT = 3;
+static int SERVER_UDATA = -2;
+static int CLIENT_UDATA = -3;
 
 Multiplexer::Multiplexer() : servers_(), clients_(), eh_() {}
 
@@ -192,8 +192,10 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
           if (client.transaction().cgi().on()) {
             pid_t pid = client.transaction().ExecuteCgi();
             if (pid > 0 &&
-                eh_.AddWithTimer(pid, EVFILT_PROC, EV_ONESHOT, NOTE_EXIT, 0,
+                eh_.AddWithTimer(client.transaction().cgi().server2cgi_fd()[1],
+                                 EVFILT_WRITE, EV_ONESHOT, NOTE_EXIT, 0,
                                  &client.fd(), CGI_EVENT_TIMEOUT) == ERROR) {
+              DisconnetClient(client);
               return;
             }
             return;
@@ -209,33 +211,78 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
         }
       }
     }
-  } else {
+  } else if (clients_.find(*static_cast<int*>(event.udata)) != clients_.end()) {
+    Client& client = *clients_[*static_cast<int*>(event.udata)];
+
+    client.CreateResponseMessageByCgi();
+    eh_.Delete(client.transaction().cgi().pid(), EVFILT_TIMER);
+    client.transaction().cgi().set_pid(-1);
+
+    if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
+        ERROR) {
+      DisconnetClient(client);
+    }
   }
 }
 
 void Multiplexer::HandleWriteEvent(struct kevent& event) {
-  Client& client = *clients_[event.ident];
+  std::cout << std::endl << *static_cast<int*>(event.udata) << std::endl;
+  if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
+    Client& client = *clients_[event.ident];
 
-  std::cout << "[Response Message Start]" << std::endl;
-  std::cout << client.response() << std::endl;
-  std::cout << "[Response Message End]" << std::endl;
+    std::cout << "[Response Message Start]" << std::endl;
+    std::cout << client.response() << std::endl;
+    std::cout << "[Response Message End]" << std::endl;
 
-  eh_.Delete(client.transaction().cgi().pid(), EVFILT_TIMER);
-
-  if (client.SendResponseMessage() == -1) {
-    return (void)DisconnetClient(client);
-  }
-
-  std::cout << "Response Message Send Success." << std::endl;
-
-  if (!client.transaction().headers_out().connection_close) {
-    if (this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
-                      KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
+    if (client.SendResponseMessage() == -1) {
       return (void)DisconnetClient(client);
     }
-    client.ResetClientInfo();
-  } else {
-    return (void)DisconnetClient(client);
+
+    std::cout << "Response Message Send Success." << std::endl;
+
+    if (!client.transaction().headers_out().connection_close) {
+      if (this->eh_.Add(client.fd(), EVFILT_TIMER, EV_ONESHOT, 0,
+                        KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
+        return (void)DisconnetClient(client);
+      }
+      client.ResetClientInfo();
+    } else {
+      return (void)DisconnetClient(client);
+    }
+  } else if (clients_.find(*static_cast<int*>(event.udata)) != clients_.end()) {
+    Client& client = *clients_[*static_cast<int*>(event.udata)];
+
+    int server2cgi_fd_out = client.transaction().cgi().server2cgi_fd()[1];
+    std::string form_data_str = client.transaction().body_in();
+    const char* form_data = form_data_str.c_str();
+
+    eh_.Delete(server2cgi_fd_out, EVFILT_TIMER);
+
+    size_t len = std::strlen(form_data);
+    while (len > 0) {
+      ssize_t chunk_size = write(server2cgi_fd_out, form_data, len);
+      if (chunk_size < 0) {
+        client.transaction().set_status_code(HTTP_INTERNAL_SERVER_ERROR);
+        client.transaction().CreateResponseMessage();
+        if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0,
+                    &CLIENT_UDATA) == ERROR) {
+          DisconnetClient(client);
+          return;
+        }
+      }
+
+      form_data += chunk_size;
+      len -= chunk_size;
+    }
+    close(server2cgi_fd_out);
+    client.transaction().cgi().set_server2cgi_fd(1, -1);
+
+    pid_t pid = client.transaction().cgi().pid();
+    if (eh_.AddWithTimer(pid, EVFILT_PROC, EV_ONESHOT, NOTE_EXIT, 0,
+                         &client.fd(), CGI_EVENT_TIMEOUT) == ERROR) {
+      DisconnetClient(client);
+      return;
+    }
   }
 }
 
@@ -243,15 +290,13 @@ void Multiplexer::HandleCgiEvent(struct kevent& event) {
   if (clients_.find(*static_cast<int*>(event.udata)) == clients_.end()) return;
   Client& client = *clients_[*static_cast<int*>(event.udata)];
 
+  eh_.Delete(event.ident, EVFILT_TIMER);
   if (event.flags & EV_ERROR) {
     client.transaction().set_status_code(HTTP_BAD_GATEWAY);
   }
-  client.CreateResponseMessageByCgi();
-  eh_.Delete(client.transaction().cgi().pid(), EVFILT_TIMER);
-  client.transaction().cgi().set_pid(-1);
-
-  if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
-      ERROR) {
+  if (eh_.AddWithTimer(client.transaction().cgi().cgi2server_fd()[0],
+                       EVFILT_READ, EV_ONESHOT, 0, 0, &client.fd(),
+                       CGI_EVENT_TIMEOUT) == ERROR) {
     DisconnetClient(client);
   }
 }
@@ -266,13 +311,14 @@ void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
     DisconnetClient(client);
   } else if (clients_.find(*static_cast<int*>(event.udata)) != clients_.end()) {
     Client& client = *clients_[*static_cast<int*>(event.udata)];
+    if ((client.transaction().cgi().server2cgi_fd()[1] !=
+         static_cast<int>(event.ident)) &&
+        (client.transaction().cgi().pid() != static_cast<pid_t>(event.ident))) {
+      return;
+    }
     client.transaction().set_status_code(HTTP_GATEWAY_TIME_OUT);
     client.CreateResponseMessage();
     client.transaction().cgi().set_pid(-1);
-
-    client.transaction().set_status_code(HTTP_GATEWAY_TIME_OUT);
-    client.CreateResponseMessage();
-
     if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
         ERROR) {
       DisconnetClient(client);
