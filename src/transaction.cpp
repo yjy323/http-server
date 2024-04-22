@@ -479,6 +479,7 @@ int Transaction::HttpGet() {
   if (entity_.type() == Entity::kDirectory) {
     std::string index_file = SetRootPath(config_.root(), config_.index());
     if (config_.index() != "" && Entity::IsFileReadable(index_file.c_str())) {
+      target_resource_ = index_file;
       RETURN_STATUS_CODE HttpGet();
     } else if (config_.auto_index()) {
       entity_.CreateDirectoryListingPage(target_resource_.c_str(),
