@@ -387,6 +387,7 @@ int Transaction::ParseFieldValue(std::string& field_line) {
     IF_BAD_HEADER_THEN_RETURN(HttpContentLength(headers_in_, field_value));
   } else if (field_name == "content-range") {
   } else if (field_name == "content-type") {
+    IF_BAD_HEADER_THEN_RETURN(HttpContentType(headers_in_, field_value));
   } else if (field_name == "range") {
   } else if (field_name == "if-range") {
   } else if (field_name == "transfer-encoding") {
@@ -533,13 +534,25 @@ void Transaction::SetCgiEnv() {
                 cgi_.envp().push_back(SetEnv("SERVER_PROTOCOL=", ""));
                 cgi_.envp().push_back(SetEnv("SERVER_SOFTWARE=", ""));
   */
+  cgi_.envp().push_back(SetEnv("AUTH_TYPE=", ""));
+  cgi_.envp().push_back(SetEnv("GATEWAY_INTERFACE=", ""));
+  cgi_.envp().push_back(SetEnv("PATH_TRANSLATED=", ""));
+  cgi_.envp().push_back(SetEnv("REMOTE_ADDR=", ""));
+  cgi_.envp().push_back(SetEnv("REMOTE_HOST=", ""));
+  cgi_.envp().push_back(SetEnv("REMOTE_IDENT=", ""));
+  cgi_.envp().push_back(SetEnv("SCRIPT_NAME=", ""));
+  cgi_.envp().push_back(SetEnv("SERVER_NAME=", ""));
+  cgi_.envp().push_back(SetEnv("SERVER_PORT=", ""));
+  cgi_.envp().push_back(SetEnv("PATH_INFO=", "/"));
+  cgi_.envp().push_back(SetEnv("SERVER_PROTOCOL=", "HTTP/1.1"));
+  cgi_.envp().push_back(SetEnv("SERVER_SOFTWARE=", "Webserv/1.0"));
 
   if (method_ == HTTP_GET_METHOD) {
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "GET"));
     cgi_.envp().push_back(SetEnv("QUERY_STRING=", uri_.query_string().c_str()));
 
   } else if (method_ == HTTP_POST_METHOD) {
-    std::string path_info = config_.root() + config_.upload_store();
+    std::string path_info = "." + config_.root() + "/" + config_.upload_store();
     cgi_.envp().push_back(SetEnv("REQUEST_METHOD=", "POST"));
     cgi_.envp().push_back(
         SetEnv("CONTENT_LENGTH=", headers_in_.content_length.c_str()));
@@ -586,6 +599,7 @@ void Transaction::SetResponseFromEntity() {
 void Transaction::SetResponseFromCgi() {
   typedef std::vector<std::string>::const_iterator Iterator;
   const std::string DUPLICATED_NL = "\n\n";
+  // const std::string DUPLICATED_CRLF = "\r\n\r\n";  // For CGI_Tester
   std::string header;
   std::string body;
   size_t pos = 0;

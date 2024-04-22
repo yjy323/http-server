@@ -125,10 +125,10 @@ int HttpContentLength(HeadersIn& headers_in, std::string value) {
 }
 
 int HttpContentType(HeadersIn& headers_in, const std::string value) {
-  if (!IsToken(value, "/")) {
+  if (!IsToken(value, "/; =")) {
     return HTTP_BAD_REQUEST;
   } else {
-    headers_in.content_type = ToCaseInsensitive(value);
+    headers_in.content_type = value;
     return HTTP_OK;
   }
 }

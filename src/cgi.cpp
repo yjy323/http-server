@@ -19,7 +19,13 @@ void CgiLocation(CgiHeaders& headers, const std::string value) {
 void CgiStatus(CgiHeaders& headers, const std::string value) {
   char* end_ptr = NULL;
   headers.status = value;
-  std::string status_code = value.substr(value.find(' '));
+  size_t pos = value.find(' ');
+  std::string status_code;
+  if (pos == value.npos) {
+    status_code = value;
+  } else {
+    status_code = value.substr(0, value.find(' '));
+  }
   long status_code_n = std::strtol(status_code.c_str(), &end_ptr, 10);
   if (end_ptr == value || *end_ptr != 0 ||
       !(status_code_n >= 100 && status_code_n <= 600)) {
@@ -52,7 +58,7 @@ Cgi::~Cgi() {
   close(server2cgi_fd_[0]);
   close(server2cgi_fd_[1]);
   for (Iterator it = envp_.begin(); it != envp_.end(); ++it) {
-    delete *it;
+    if (*it != NULL) delete *it;
   }
 }
 Cgi& Cgi::operator=(const Cgi& obj) {
@@ -160,7 +166,7 @@ pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
     dup2(cgi2server_fd_[1], STDOUT_FILENO);
     close(cgi2server_fd_[1]);
     cgi2server_fd_[1] = -1;
-    execve(*argv_.data(), argv_.data(), envp_.data());
+    execve(argv_.data()[0], argv_.data(), envp_.data());
     std::exit(HTTP_INTERNAL_SERVER_ERROR);
   } else {
     close(server2cgi_fd_[0]);
