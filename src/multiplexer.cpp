@@ -262,6 +262,8 @@ void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
     DisconnetClient(client);
   } else if (clients_.find(*static_cast<int*>(event.udata)) != clients_.end()) {
     Client& client = *clients_[*static_cast<int*>(event.udata)];
+    client.transaction().set_status_code(HTTP_GATEWAY_TIME_OUT);
+    client.CreateResponseMessage();
 
     if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
         ERROR) {
