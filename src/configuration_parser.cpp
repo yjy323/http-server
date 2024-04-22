@@ -1,5 +1,6 @@
 #include "configuration_parser.hpp"
 
+#include <cstdlib>
 #include <sstream>
 
 #include "file_reader.hpp"
@@ -419,7 +420,7 @@ int ConfigurationParser::ParseClient_max_body_size(int& client_max_body_size,
 
   if (!isPositiveInteger(valueTokens[0])) return ERROR;
 
-  client_max_body_size = atoi(valueTokens[0].c_str());
+  client_max_body_size = std::atoi(valueTokens[0].c_str());
 
   return OK;
 }

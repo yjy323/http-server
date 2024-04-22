@@ -1,5 +1,7 @@
 #include "entity.hpp"
 
+#include <ctime>
+
 #include "utils.hpp"
 
 #define HTML_FILE ".html\0"
@@ -79,7 +81,8 @@ bool Entity::IsFileExecutable(const char* path) {
 }
 
 std::string Entity::GetContents(std::string path) {
-  std::ifstream file(path);
+  std::ifstream file;
+  file.open(path.c_str());
   std::ostringstream oss;
   oss << file.rdbuf();
   body_ = oss.str();
@@ -140,7 +143,7 @@ std::string Entity::CreatePage(std::string body_line) {
       "</html>";
   mime_type_ = GetMimeType(HTML_FILE);
   length_n_ = body_.size();
-  length_ = std::to_string(length_n_);
+  length_ = ToString(length_n_);
   return body_;
 }
 std::string Entity::CreateDirectoryListingPage(std::string path,
@@ -157,6 +160,7 @@ std::string Entity::CreateDirectoryListingPage(std::string path,
   DIR* dir;
   struct dirent* entry;
   struct stat fileStat;
+  char buffer[80];
 
   if ((dir = opendir(path.c_str())) != NULL) {
     while ((entry = readdir(dir)) != NULL) {
@@ -164,14 +168,13 @@ std::string Entity::CreateDirectoryListingPage(std::string path,
       if (filename != "." && filename != "..") {
         std::string filepath = path + "/" + filename;
         if (stat(filepath.c_str(), &fileStat) == 0) {
+          struct tm* timeinfo = std::localtime(&fileStat.st_mtime);
+          std::strftime(buffer, sizeof(buffer), "%d-%b-%Y %H:%M", timeinfo);
           if (S_ISDIR(fileStat.st_mode)) {
             filename += "/";
           }
           html << "<a href=\"" << filename << "\">" << filename << "</a>\t\t";
-          html << std::right << std::setw(10)
-               << std::put_time(std::localtime(&fileStat.st_mtime),
-                                "%d-%b-%Y %H:%M")
-               << "\t";
+          html << std::right << std::setw(10) << buffer << "\t";
           if (S_ISDIR(fileStat.st_mode)) {
             html << std::setw(10) << "----\t";
           } else {
@@ -192,7 +195,7 @@ std::string Entity::CreateDirectoryListingPage(std::string path,
   body_ = html.str();
   mime_type_ = GetMimeType(HTML_FILE);
   length_n_ = body_.size();
-  length_ = std::to_string(length_n_);
+  length_ = ToString(length_n_);
   return body_;
 }
 
@@ -200,6 +203,6 @@ std::string Entity::ReadFile(const char* path) {
   body_ = GetContents(path);
   modified_t_ = GetModifiedTime(path);
   length_n_ = body_.size();
-  length_ = std::to_string(length_n_);
+  length_ = ToString(length_n_);
   return body_;
 }

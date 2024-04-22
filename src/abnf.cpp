@@ -1,6 +1,11 @@
 #include "abnf.hpp"
 
-bool IsOctet(char c) { return (static_cast<unsigned char>(c) <= 255); }
+#include <cstdlib>
+
+bool IsOctet(char c) {
+  (void)static_cast<unsigned char>(c);
+  return true;
+}
 
 bool IsHost(std::string s) {
   // host = IP-literal / IPv4address / reg-name
@@ -38,16 +43,11 @@ bool IsHost(std::string s) {
     */
     for (size_t i = 0; i < length; ++i) {
       char c = s[i];
-
-      switch (c) {
-        if (!IsPctEncoded(s, i)) {
-          return false;
-        }
-        default:
-          if (!IsUnreserved(c) && !IsSubDlims(c)) {
-            return false;
-          }
-          break;
+      if (c == '%' && !IsPctEncoded(s, i)) {
+        return false;
+      }
+      if (!IsUnreserved(c) && !IsSubDlims(c)) {
+        return false;
       }
     }
 
@@ -75,10 +75,10 @@ bool IsVchar(char c) {
 
 bool IsObsText(unsigned char c) {
   // obs-text = %x80-FF
-  if (c < 128 || c > 255) {
-    return false;
-  } else {
+  if (c > 127) {
     return true;
+  } else {
+    return false;
   }
 }
 

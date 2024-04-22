@@ -1,5 +1,8 @@
 #include "utils.hpp"
 
+#include <cstdlib>
+#include <sstream>
+
 std::string MakeRfc850Time(const std::time_t& time) {
   std::ostringstream oss;
   std::tm* tm = std::gmtime(&time);  // UTC 시간으로 변환
@@ -44,7 +47,7 @@ std::string RemoveWhiteSpace(std::string str) {
 
 std::string Trim(const std::string s) {
   size_t front = 0;
-  size_t back = s.npos;
+  ssize_t back = s.npos;
 
   for (; front < s.length(); ++front) {
     if (s[front] != 9 && s[front] != 32) {
@@ -148,5 +151,5 @@ bool isPositiveInteger(const std::string& str) {
     if (str[i] < '0' || str[i] > '9') return false;
   }
 
-  return atoi(str.c_str()) > 0;
+  return std::atoi(str.c_str()) > 0;
 }

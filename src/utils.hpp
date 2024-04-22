@@ -7,6 +7,13 @@
 #include <string>
 #include <vector>
 
+template <typename T>
+std::string ToString(T Number) {
+  std::ostringstream ss;
+  ss << Number;
+  return ss.str();
+}
+
 std::string MakeRfc850Time(const std::time_t& time);
 std::string ToCaseInsensitive(std::string str);
 

@@ -248,7 +248,7 @@ std::string Transaction::CreateResponseMessage() {
   headers_out_.date = MakeRfc850Time(headers_out_.date_t);
 
   if (body_out_ == "") {
-    entity_.CreatePage(std::to_string(status_code_) + " " +
+    entity_.CreatePage(ToString(status_code_) + " " +
                        HttpGetReasonPhase(status_code_));
     SetResponseFromEntity();
   }
@@ -467,7 +467,7 @@ int Transaction::DecodeChunkedEncoding(std::string buff) {
     offset = contents_end + std::strlen(CRLF);
   }
   headers_in_.content_length_n = body_in_.length();
-  headers_in_.content_length = std::to_string(headers_in_.content_length_n);
+  headers_in_.content_length = ToString(headers_in_.content_length_n);
   RETURN_STATUS_CODE HTTP_OK;
 }
 
@@ -633,12 +633,12 @@ void Transaction::SetResponseFromCgi() {
     status_code_ = cgi_.headers().status_code;
     body_out_ = body;
     headers_out_.content_length_n = body_out_.length();
-    headers_out_.content_length = std::to_string(headers_out_.content_length_n);
+    headers_out_.content_length = ToString(headers_out_.content_length_n);
   }
 }
 
 std::string Transaction::AppendStatusLine() {
-  return response_ = http_version_ + " " + std::to_string(status_code_) + " " +
+  return response_ = http_version_ + " " + ToString(status_code_) + " " +
                      HttpGetReasonPhase(status_code_) + CRLF + response_;
 }
 
