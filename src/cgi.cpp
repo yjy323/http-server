@@ -45,10 +45,18 @@ Cgi::Cgi()
       response_(""),
       headers_() {
   headers_.status_code = HTTP_OK;
+  cgi2server_fd_[0] = -1;
+  cgi2server_fd_[1] = -1;
+  server2cgi_fd_[0] = -1;
+  server2cgi_fd_[1] = -1;
 }
 
 Cgi::Cgi(const Cgi& obj) { *this = obj; }
 Cgi::~Cgi() {
+  close(cgi2server_fd_[0]);
+  close(cgi2server_fd_[1]);
+  close(server2cgi_fd_[0]);
+  close(server2cgi_fd_[1]);
   for (Iterator it = envp_.begin(); it != envp_.end(); ++it) {
     if (*it != NULL) delete *it;
   }
@@ -146,23 +154,29 @@ pid_t Cgi::ExecuteCgi(const char* path, const char* extension,
   pid_ = fork();
   if (pid_ == -1) {
     return HTTP_INTERNAL_SERVER_ERROR;
-
   } else if (pid_ == 0) {
     close(server2cgi_fd_[1]);
+    server2cgi_fd_[1] = -1;
     dup2(server2cgi_fd_[0], STDIN_FILENO);
     close(server2cgi_fd_[0]);
+    server2cgi_fd_[0] = -1;
 
     close(cgi2server_fd_[0]);
+    cgi2server_fd_[0] = -1;
     dup2(cgi2server_fd_[1], STDOUT_FILENO);
     close(cgi2server_fd_[1]);
+    cgi2server_fd_[1] = -1;
     execve(argv_.data()[0], argv_.data(), envp_.data());
     std::exit(HTTP_INTERNAL_SERVER_ERROR);
   } else {
     close(server2cgi_fd_[0]);
+    server2cgi_fd_[0] = -1;
     close(cgi2server_fd_[1]);
+    cgi2server_fd_[1] = -1;
     // while()
     write(server2cgi_fd_[1], form_data, std::strlen(form_data));
     close(server2cgi_fd_[1]);
+    server2cgi_fd_[1] = -1;
   }
 
   return HTTP_OK;

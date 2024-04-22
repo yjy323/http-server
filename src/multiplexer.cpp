@@ -10,11 +10,11 @@
 static const bool REUSABLE = false;
 static const int BACKLOG = 128;
 static const int EVENT_SIZE = 30;
-static const int POLLING_TIMEOUT = 10;
+static const int POLLING_TIMEOUT = 120;
 static const int EVENT_TIMEOUT = 10;
-static const int CGI_EVENT_TIMEOUT = 5;
-static const int KEEP_ALIVE_TIMEOUT = 10;
-static const int SEND_EVENT_TIMEOUT = 10;
+static const int CGI_EVENT_TIMEOUT = 30;
+static const int KEEP_ALIVE_TIMEOUT = 60;
+static const int SEND_EVENT_TIMEOUT = 60;
 static int SERVER_UDATA = (1 << 0);
 static int CLIENT_UDATA = (1 << 1);
 
@@ -239,8 +239,6 @@ void Multiplexer::HandleCgiEvent(struct kevent& event) {
   if (clients_.find(*static_cast<int*>(event.udata)) == clients_.end()) return;
   Client& client = *clients_[*static_cast<int*>(event.udata)];
 
-  std::cout << "\n\n" << event.data << "\n\n";
-
   if (event.flags & EV_ERROR) {
     client.transaction().set_status_code(HTTP_BAD_GATEWAY);
   }
@@ -262,6 +260,9 @@ void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
     DisconnetClient(client);
   } else if (clients_.find(*static_cast<int*>(event.udata)) != clients_.end()) {
     Client& client = *clients_[*static_cast<int*>(event.udata)];
+
+    client.transaction().set_status_code(HTTP_GATEWAY_TIME_OUT);
+    client.CreateResponseMessage();
 
     if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
         ERROR) {
@@ -287,8 +288,12 @@ int Multiplexer::AcceptWithClient(int server_fd) {
 }
 
 void Multiplexer::DisconnetClient(Client& client) {
-  delete &client;
+  if (client.transaction().cgi().pid() > 0) {
+    eh_.Delete(client.transaction().cgi().pid());
+    eh_.Delete(client.transaction().cgi().pid(), EVFILT_TIMER);
+  }
   clients_.erase(client.fd());
   eh_.Delete(client.fd(), EVFILT_TIMER);
   eh_.Delete(client.fd());
+  delete &client;
 }
