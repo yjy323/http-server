@@ -179,7 +179,8 @@ void Multiplexer::HandleReadEvent(struct kevent& event) {
           std::cout << "[Request Start]" << std::endl;
           std::cout << client.request() << std::endl;
           std::cout << "[Request End]" << std::endl;
-          if (client.ParseRequestBody() != HTTP_OK) {
+          if (client.transaction().status_code() != HTTP_OK ||
+              client.ParseRequestBody() != HTTP_OK) {
             client.CreateResponseMessage();
             if (this->eh_.AddWithTimer(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0,
                                        0, &CLIENT_UDATA,

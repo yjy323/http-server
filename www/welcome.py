@@ -19,7 +19,7 @@ if os.environ.get("REQUEST_METHOD") == 'POST':
             if key == 'username':
                 username = value
                 break
-    except ValueError:
+    except:
         # If there's an error in reading POST data, set username to "Guest"
         username = "42 Guest"
 else:
