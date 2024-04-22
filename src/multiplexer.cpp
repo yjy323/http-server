@@ -146,8 +146,10 @@ void Multiplexer::HandleEvents(int nev) {
 }
 
 void Multiplexer::HandleErrorEvent(struct kevent& event) {
-  Client& client = *clients_[event.ident];
-  DisconnetClient(client);
+  if (clients_.find(event.ident) != clients_.end()) {
+    Client& client = *clients_[event.ident];
+    DisconnetClient(client);
+  }
 }
 
 void Multiplexer::HandleReadEvent(struct kevent& event) {
