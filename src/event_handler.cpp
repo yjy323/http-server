@@ -61,6 +61,24 @@ int EventHandler::Add(int ident, int16_t filter, uint64_t flags,
   return OK;
 }
 
+int EventHandler::Delete(int ident, int16_t filter) {
+  Event event;
+
+  EV_SET(&event, ident, filter, 0, 0, 0, 0);
+  if (kevent(kq_, &event, 1, 0, 0, 0) == -1) {
+    return ERROR;
+  }
+
+  if (added_event_.find(ident) != added_event_.end()) {
+    std::set<Event>& event_set = added_event_[ident];
+    if (event_set.find(event) != event_set.end()) {
+      event_set.erase(event);
+    }
+  }
+
+  return OK;
+}
+
 int EventHandler::AddWithTimer(int ident, int16_t filter, uint64_t flags,
                                uint32_t fflags, int64_t data, void* udata,
                                int time_sec) {
@@ -74,6 +92,7 @@ int EventHandler::AddWithTimer(int ident, int16_t filter, uint64_t flags,
 }
 
 int EventHandler::Delete(int ident) {
+  Add(ident, EV_DELETE, 0, 0, 0, 0);
   added_event_.erase(ident);
 
   return OK;

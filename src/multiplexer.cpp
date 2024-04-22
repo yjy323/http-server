@@ -221,12 +221,14 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
                       KEEP_ALIVE_TIMEOUT * 1000, &CLIENT_UDATA) == ERROR) {
       return (void)DisconnetClient(client);
     }
+    client.ResetClientInfo();
+  } else {
+    return (void)DisconnetClient(client);
   }
-
-  client.ResetClientInfo();
 }
 
 void Multiplexer::HandleCgiEvent(struct kevent& event) {
+  if (clients_.find(*static_cast<int*>(event.udata)) == clients_.end()) return;
   Client& client = *clients_[*static_cast<int*>(event.udata)];
 
   if (event.flags & EV_ERROR) {
@@ -242,14 +244,13 @@ void Multiplexer::HandleCgiEvent(struct kevent& event) {
 
 void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
   if (*static_cast<int*>(event.udata) == SERVER_UDATA) {
+    return;
   } else if (*static_cast<int*>(event.udata) == CLIENT_UDATA) {
     if (clients_.find(event.ident) == clients_.end()) return;
     Client& client = *clients_[event.ident];
 
     DisconnetClient(client);
-  } else {
-    if (clients_.find(*static_cast<int*>(event.udata)) == clients_.end())
-      return;
+  } else if (clients_.find(*static_cast<int*>(event.udata)) != clients_.end()) {
     Client& client = *clients_[*static_cast<int*>(event.udata)];
 
     if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
@@ -278,5 +279,6 @@ int Multiplexer::AcceptWithClient(int server_fd) {
 void Multiplexer::DisconnetClient(Client& client) {
   delete &client;
   clients_.erase(client.fd());
+  eh_.Delete(client.fd(), EVFILT_TIMER);
   eh_.Delete(client.fd());
 }
