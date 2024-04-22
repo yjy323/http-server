@@ -220,6 +220,8 @@ void Multiplexer::HandleWriteEvent(struct kevent& event) {
   std::cout << client.response() << std::endl;
   std::cout << "[Response Message End]" << std::endl;
 
+  eh_.Delete(client.transaction().cgi().pid(), EVFILT_TIMER);
+
   if (client.SendResponseMessage() == -1) {
     return (void)DisconnetClient(client);
   }
@@ -247,6 +249,8 @@ void Multiplexer::HandleCgiEvent(struct kevent& event) {
     client.transaction().set_status_code(HTTP_BAD_GATEWAY);
   }
   client.CreateResponseMessageByCgi();
+  eh_.Delete(client.transaction().cgi().pid(), EVFILT_TIMER);
+  client.transaction().cgi().set_pid(-1);
 
   if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
       ERROR) {
@@ -266,6 +270,7 @@ void Multiplexer::HandleTimeoutEvent(struct kevent& event) {
     Client& client = *clients_[*static_cast<int*>(event.udata)];
     client.transaction().set_status_code(HTTP_GATEWAY_TIME_OUT);
     client.CreateResponseMessage();
+    client.transaction().cgi().set_pid(-1);
 
     if (eh_.Add(client.fd(), EVFILT_WRITE, EV_ONESHOT, 0, 0, &CLIENT_UDATA) ==
         ERROR) {

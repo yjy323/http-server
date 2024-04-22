@@ -46,6 +46,7 @@ class Transaction {
   const Entity& entity() const;
   Entity& entity();
   const Cgi& cgi() const;
+  Cgi& cgi();
 
   Uri& uri_instance();
   Cgi& cgi_instance();

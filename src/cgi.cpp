@@ -40,11 +40,15 @@ Cgi::Cgi()
       envp_(std::vector<char*>()),
       cgi2server_fd_(),
       server2cgi_fd_(),
-      pid_(0),
+      pid_(-1),
       on_(false),
       response_(""),
       headers_() {
   headers_.status_code = HTTP_OK;
+  cgi2server_fd_[0] = -1;
+  cgi2server_fd_[1] = -1;
+  server2cgi_fd_[0] = -1;
+  server2cgi_fd_[1] = -1;
 }
 
 Cgi::Cgi(const Cgi& obj) { *this = obj; }
@@ -76,6 +80,7 @@ Cgi& Cgi::operator=(const Cgi& obj) {
 }
 
 void Cgi::set_response(std::string response) { this->response_ = response; }
+void Cgi::set_pid(pid_t pid) { this->pid_ = pid; }
 
 const std::vector<char*>& Cgi::argv() const { return this->argv_; }
 const std::vector<char*>& Cgi::envp() const { return this->envp_; }
