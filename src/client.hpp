@@ -18,6 +18,7 @@ class Client : public Socket {
 
   ssize_t ReceiveRequest();
   int ParseRequestHeader();
+  int ParseRequestBody();
   void CreateResponseMessage();
   void CreateResponseMessageByCgi();
   int SendResponseMessage();
@@ -50,6 +51,8 @@ class Client : public Socket {
   Transaction transaction_;
   std::string request_;
   std::string response_;
+
+  bool request_body_parsed_;
 };
 
 #endif

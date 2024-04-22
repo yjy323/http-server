@@ -10,7 +10,8 @@ Client::Client(const Server& server, int fd)
       server_configs_(server.config()),
       transaction_(),
       request_(),
-      response_() {}
+      response_(),
+      request_body_parsed_(false) {}
 
 Client::~Client() {}
 
@@ -22,6 +23,7 @@ Client& Client::operator=(const Client& ref) {
   transaction_ = ref.transaction();
   request_ = ref.request();
   response_ = ref.response();
+  request_body_parsed_ = ref.request_body_parsed_;
 
   return *this;
 }
@@ -30,6 +32,7 @@ void Client::ResetClientInfo() {
   transaction_ = Transaction();
   request_ = std::string();
   response_ = std::string();
+  request_body_parsed_ = false;
 }
 
 ssize_t Client::ReceiveRequest() {
@@ -44,6 +47,9 @@ ssize_t Client::ReceiveRequest() {
 }
 
 int Client::ParseRequestHeader() {
+  if (request_body_parsed_) return transaction_.status_code();
+  request_body_parsed_ = true;
+
   int http_status = transaction_.ParseRequestHeader(request_);
   const std::string& host = transaction_.headers_in().host;
   const Server::Configuration& sc = this->conf_by_host(host);
@@ -52,6 +58,11 @@ int Client::ParseRequestHeader() {
   transaction_.GetConfiguration(sc);
 
   return http_status;
+}
+
+int Client::ParseRequestBody() {
+  return transaction_.ParseRequestBody(
+      request_body().c_str(), transaction_.headers_in().content_length_n);
 }
 
 void Client::CreateResponseMessage() {
