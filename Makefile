@@ -3,7 +3,7 @@ NAME = webserv
 CXX = c++ -std=c++98
 RM = rm -f
 
-CXXFLAGS = -Wall -Wextra -Werror 
+CXXFLAGS = -Wall -Wextra -Werror
 
 SRC_DIR = src
 OBJ_DIR = obj
