@@ -49,6 +49,7 @@ class Cgi {
   CgiHeaders& headers_instance();
 
   void set_response(std::string response);
+  void set_pid(pid_t pid);
 
  private:
   bool IsCgiProgram(const char*);

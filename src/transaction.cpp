@@ -239,7 +239,7 @@ std::string Transaction::CreateResponseMessage() {
 
   response_ = std::string();
 
-  if (cgi_.on()) {
+  if (status_code_ == HTTP_OK && cgi_.on()) {
     SetResponseFromCgi();
   }
 
@@ -327,6 +327,7 @@ std::string Transaction::body_out() const { return this->body_out_; }
 const Entity& Transaction::entity() const { return this->entity_; }
 Entity& Transaction::entity() { return this->entity_; }
 const Cgi& Transaction::cgi() const { return this->cgi_; }
+Cgi& Transaction::cgi() { return this->cgi_; }
 std::string Transaction::response() const { return this->response_; }
 
 Uri& Transaction::uri_instance() { return this->uri_; }
