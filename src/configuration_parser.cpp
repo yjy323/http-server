@@ -11,7 +11,7 @@
   std::map<std::string, ServerConfiguration::LocationConfiguration>()
 #define DEFAULT_ERROR_PAGE ""
 #define DEFAULT_CLIENT_MAX_BODY_SIZE 1000000
-#define DEFAULT_SERVER_ROOT "/www/static"
+#define DEFAULT_SERVER_ROOT "/www"
 #define EFAULT_LOCATION_ROOT ""
 #define DEFAULT_AUTO_INDEX false
 #define DEFAULT_INDEX ""
