@@ -64,7 +64,7 @@ int EventHandler::Add(int ident, int16_t filter, uint64_t flags,
 int EventHandler::Delete(int ident, int16_t filter) {
   Event event;
 
-  EV_SET(&event, ident, filter, 0, 0, 0, 0);
+  EV_SET(&event, ident, filter | EV_DELETE, 0, 0, 0, 0);
   if (kevent(kq_, &event, 1, 0, 0, 0) == -1) {
     return ERROR;
   }
