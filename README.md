@@ -1,29 +1,29 @@
 # HTTP Server
 ## About
-C++98 기반의 HTTP 1.1 서버입니다. HTTP 서버는 GET, POST, DELETE 메서드를 지원하며, 조건부 요청과 요청 본문 표현, Chunked-Encoding 정보를 담은 HTTP Headers를 해석할 수 있습니다. 지정된 루트 디렉토리를 기준으로 정적 파일을 응답하며, CGI 스크립트를 실행할 수 있습니다.
+C++98으로 작성된 HTTP 1.1 서버입니다.
 
 ## Usage
 ``` bash
 make
-http-server [configuration file] 			# conf/default.conf
+http-server [configuration file] 	# conf/default.conf
 ```
 ## Configuration File
 
 ``` bash
 server {
-	listen 8080; 							# 서버의 [host:]port
-	server_name localhost; 					# 서버 명
-	error_page error_page.html; 			# 기본 오류 페이지
-	client_max_body_size 1000000; 			# 최대 HTTP Request Body 크기
-	auto_index off; 						# 디렉토리 리스팅 사용 여부 설정
-	index index.html; 						# index 페이지
+	listen 8080; 	# 서버의 [host:]port
+	server_name localhost; 	# 서버 명
+	error_page error_page.html; 	# 기본 오류 페이지
+	client_max_body_size 1000000; 	# 최대 HTTP Request Body 크기
+	auto_index off; 	# 디렉토리 리스팅 사용 여부 설정
+	index index.html; 	# index 페이지
 
-	location / { 							# URI 라우팅 규칙
+	location / { 	# URI 라우팅 규칙
 		allowed_method GET POST DELETE; 	# 허용된 메서드
-		root /www;  						# 루트 디렉토리
+		root /www; 	# 루트 디렉토리
 		auto_index off;
 		index index.html;
-		upload_store upload/;  				# 파일 업로드 경로
+		upload_store upload/; 	# 파일 업로드 경로
 	}
 }
 ```
