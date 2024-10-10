@@ -18,12 +18,12 @@ server {
 	auto_index off; 			# 디렉토리 리스팅 사용 여부 설정
 	index index.html; 			# index 페이지
 
-	location / { 		#	 URI 라우팅 규칙
-		allowed_method GET POST DELETE; 	# 허용된 메서드
+	location / { 				# URI 라우팅 규칙
+		allowed_method GET POST DELETE; # 허용된 메서드
 		root /www; 			# 루트 디렉토리
 		auto_index off;
 		index index.html;
-		upload_store upload/; 			# 파일 업로드 경로
+		upload_store upload/; 		# 파일 업로드 경로
 	}
 }
 ```
