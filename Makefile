@@ -1,4 +1,4 @@
-NAME = webserv
+NAME = http-server
 
 CXX = c++ -std=c++98
 RM = rm -f
